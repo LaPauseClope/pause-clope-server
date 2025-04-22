@@ -18,7 +18,7 @@ public class ClickerService {
     public void postClicker(SaveRequest body) {
         userDataRepository.findByNickname(body.getNickname()).ifPresentOrElse(
                 userData -> {
-                    userData.setClicks(userData.getClicks() + body.getClicks());
+                    userData.setClicks(body.getClicks());
                     userDataRepository.save(userData);
                 },
                 () -> userDataRepository.save(new UserData(body.getNickname(), body.getClicks()))
