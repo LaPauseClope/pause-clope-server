@@ -1,87 +1,94 @@
-La Pause clope Rest API
-A simple Spring Boot application that simulates a Cookie Clicker game. It features:
+# La pause clope
 
-JWT-based authentication
+Link to main [documentation](https://www.youtube.com/watch?v=dQw4w9WgXcQ).
+A simple Spring Boot application that simulates a Cookie Clicker game, with PostgreSQL integration.
 
-RESTful API endpoints
+---
 
-PostgreSQL database integration
+## 🛠️ Development Environment Setup
 
-🚀 Features
-User Authentication: Secure user registration and login using JWT.
+### 🔧 Prerequisites
 
-Cookie Management: Increment cookies, view stats, and purchase upgrades.
+- Java 21 (Open jdk)
+- Maven
+- IntelliJ IDEA (recommended)
+- PostgreSQL (can be run using Docker)
 
-REST API: Clean and organized endpoints for game interactions.
+---
 
-Database Integration: Persistent data storage with PostgreSQL.
+## 🐳 PostgreSQL Setup with Docker
 
-🛠️ Built With
-Spring Boot
+Run the following command to start a PostgreSQL container:
 
-Spring Security TODO
+```bash
+docker run --name postgres-container \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_DB=cookieclicker \
+  -p 5432:5432 \
+  -d postgres
+```
 
-Spring Data JPA TODO
+----
+To stop and remove the container:
 
-PostgreSQL TODO
+```bash
+docker stop postgres-container
+docker rm postgres-container
+```
 
-JSON Web Tokens (JWT) TODO
+## ⚙️ Application Configuration
 
-📦 Installation
-Clone the repository:
+Edit your application.yaml in src/main/resources:
 
-bash
-Copy
-Edit
-git clone https://github.com/LaPauseClope/pause-clope-server.git
-cd pause-clone-server
-Configure the database:
+```yaml
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/cookieclicker
+    username: postgres
+    password: password
+  jpa:
+    hibernate:
+      ddl-auto: update
+      show-sql: true
+  profiles:
+    active: dev
 
-Create a PostgreSQL database and update the application.properties file located in src/main/resources/:
+  server:
+    port: 8080
+```
 
-properties
-Copy
-Edit
-spring.datasource.url=jdbc:postgresql://localhost:5432/your_database
-spring.datasource.username=your_username
-spring.datasource.password=your_password
-spring.jpa.hibernate.ddl-auto=update
-Build and run the application:
+Change active profile depending on configuration
 
-bash
-Copy
-Edit
-mvn clean install
-mvn spring-boot:run
-The application will start on http://localhost:8080.
+---
 
-🔐 Authentication TODO
-Register: POST /api/auth/register
+## 🧱 Build and Run the App
 
-Login: POST /api/auth/login
+### 🔨 Build with Maven
 
-Upon successful login, a JWT token will be returned. Include this token in the Authorization header for protected endpoints:
+```bash
+./mvnw clean install
+```
 
-makefile
-Copy
-Edit
-Authorization: Bearer your_jwt_token
-📖 API Endpoints
-Increment Cookies: POST /api/game/click
+▶️ Run with Spring Boot
 
-View Stats: GET /api/game/stats
+```bash
+./mvnw spring-boot:run
+```
 
-Purchase Upgrade: POST /api/game/upgrade
+Or directly with the jar:
 
-🧪 Testing
-To run tests:
+```bash
+java -jar target/cookie-clicker-0.0.1-SNAPSHOT.jar
+```
 
-bash
-Copy
-Edit
-mvn test
-📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
+```bash
+./mvnw test
+```
 
-📫 Contact
-For any inquiries or feedback, please contact your.email@example.com.
+---
+
+## Postman testing
+
+Link : [click here](https://app.getpostman.com/join-team?invite_code=8cbac6d126d4553a0384e4f33e19a25b964669e660f47611d5235e16fc5ea495&target_code=a3f18daaa9304aef43bcea35df2fe791)
+Edit variables in "Environment" space in postman to match with your configuration
