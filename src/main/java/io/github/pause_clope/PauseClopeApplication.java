@@ -9,5 +9,4 @@ public class PauseClopeApplication {
 	public static void main(String[] args) {
 		SpringApplication.run(PauseClopeApplication.class, args);
 	}
-
 }
