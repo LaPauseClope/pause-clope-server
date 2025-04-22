@@ -5,15 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SaveRequest {
     private String nickname;
-    private String clicks;
-
-    public String getClicks() {
-        return clicks;
-    }
-
-    public void setClicks(String clicks) {
-        this.clicks = clicks;
-    }
+    private Long clicks;
 
     public String getNickname() {
         return nickname;
@@ -21,5 +13,13 @@ public class SaveRequest {
 
     public void setNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public Long getClicks() {
+        return clicks;
+    }
+
+    public void setClicks(Long clicks) {
+        this.clicks = clicks;
     }
 }
