@@ -21,9 +21,9 @@ public class ClickerController {
         this.clickerService = clickerService;
     }
 
-    @PostMapping()
-    public ResponseEntity<String> postClicker(@RequestBody SaveRequest body) {
-        clickerService.postClicker(body);
+    @PostMapping("/{nickname}")
+    public ResponseEntity<String> postClicker(@PathVariable String nickname, @RequestBody SaveRequest body) {
+        clickerService.postClicker(nickname, body);
         return ResponseEntity.ok().body("Saved");
     }
 

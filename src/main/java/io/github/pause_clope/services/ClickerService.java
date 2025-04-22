@@ -15,13 +15,13 @@ public class ClickerService {
         this.userDataRepository = userDataRepository;
     }
 
-    public void postClicker(SaveRequest body) {
-        userDataRepository.findByNickname(body.getNickname()).ifPresentOrElse(
+    public void postClicker(String nickname, SaveRequest body) {
+        userDataRepository.findByNickname(nickname).ifPresentOrElse(
                 userData -> {
                     userData.setClicks(body.getClicks());
                     userDataRepository.save(userData);
                 },
-                () -> userDataRepository.save(new UserData(body.getNickname(), body.getClicks()))
+                () -> userDataRepository.save(new UserData(nickname, body.getClicks()))
         );
     }
 
