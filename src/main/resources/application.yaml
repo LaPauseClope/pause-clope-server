@@ -5,6 +5,7 @@ spring:
     url: jdbc:postgresql://localhost:5432/cookieclicker
     username: postgres
     password: password
+
   data:
     rest:
       base-path: /api/v1
