@@ -28,11 +28,10 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Clean with Maven
-      run: mvn clean
+      run: mvn clean install
     - name: Test with Maven
-      run: mvn test -Dspring.profiles.active=test
-    - name: Install with Maven
-      run: mvn install
+      run: mvn test -e -Dspring.profiles.active=test
+
 
     # Optional: Uploads the full dependency graph to GitHub to improve the quality of Dependabot alerts this repository can receive
     - name: Update dependency graph
