@@ -30,7 +30,7 @@ jobs:
     - name: Clean with Maven
       run: mvn clean
     - name: Test with Maven
-      run: mvn test -Dspring.profiles.active=test
+      run: mvn test
     - name: Install with Maven
       run: mvn install
 
