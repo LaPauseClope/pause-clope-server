@@ -1,5 +1,7 @@
 # La pause clope
 
+[![Spring Test](https://github.com/LaPauseClope/pause-clope-server/actions/workflows/maven.yml/badge.svg)](https://github.com/LaPauseClope/pause-clope-server/actions/workflows/maven.yml)
+
 Link to main [documentation](https://www.youtube.com/watch?v=dQw4w9WgXcQ).
 A simple Spring Boot application that simulates a Cookie Clicker game, with PostgreSQL integration.
 
