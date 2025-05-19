@@ -15,8 +15,3 @@ terraform {
     access_key            = var.backend_access_key
   }
 }
-
-# Configuration du provider Azure
-provider "azurerm" {
-  features {}
-}
