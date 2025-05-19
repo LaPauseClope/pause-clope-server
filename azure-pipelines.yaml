@@ -14,24 +14,62 @@ stages:
       - job: TerraformPlanJob
         displayName: 'Generate Terraform Plan'
         steps:
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "Validating environment variables..."
+                if (-not $env:ARM_ACCESS_KEY) { throw "ARM_ACCESS_KEY is not set" }
+                if (-not $env:ARM_CONTAINER_NAME) { throw "ARM_CONTAINER_NAME is not set" }
+                if (-not $env:ARM_RESOURCE_GROUP_NAME) { throw "ARM_RESOURCE_GROUP_NAME is not set" }
+                if (-not $env:ARM_STORAGE_ACCOUNT_NAME) { throw "ARM_STORAGE_ACCOUNT_NAME is not set" }
+                if (-not $env:ARM_VM_PASSWORD) { throw "ARM_VM_PASSWORD is not set" }
+                Write-Host "Validating password complexity for ARM_VM_PASSWORD..."
+                $password = $env:ARM_VM_PASSWORD
+                if ($password.Length -lt 12) { throw "Password must be at least 12 characters long" }
+                if ($password -notmatch "[A-Z]") { throw "Password must contain at least one uppercase letter" }
+                if ($password -notmatch "[a-z]") { throw "Password must contain at least one lowercase letter" }
+                if ($password -notmatch "[0-9]") { throw "Password must contain at least one number" }
+                if ($password -notmatch "[!@#$%^&*]") { throw "Password must contain at least one special character" }
+                Write-Host "All validations passed."
+            displayName: 'Validate Environment Variables and Password'
+
+          - task: PowerShell@2
+            inputs:
+              targetType: 'inline'
+              script: |
+                Write-Host "Listing Terraform configuration files..."
+                cd terraform
+                Get-ChildItem -Filter *.tf | ForEach-Object { Write-Host "File: $($_.Name)" }
+                Get-ChildItem -Filter *.tf | ForEach-Object { Write-Host "Content of $($_.Name):"; Get-Content $_.Name; Write-Host "-----" }
+            displayName: 'Display Terraform Configuration'
+
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
               scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
+                $ErrorActionPreference = "Stop"
                 cd terraform
+                Write-Host "Running terraform init..."
                 terraform init -upgrade `
                   -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
                   -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
                   -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-                  -backend-config="access_key=$env:ARM_ACCESS_KEY"
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" 2>&1 | Tee-Object -FilePath "terraform-init.log"
+                Write-Host "Running terraform validate..."
+                terraform validate 2>&1 | Tee-Object -FilePath "terraform-validate.log"
+                Write-Host "Running terraform plan..."
                 terraform plan -out=terraform.tfplan `
                   -var="backend_container_name=$env:ARM_CONTAINER_NAME" `
                   -var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" `
                   -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
                   -var="backend_access_key=$env:ARM_ACCESS_KEY" `
-                  -var="admin_password=$env:ARM_VM_PASSWORD"
+                  -var="admin_password=$env:ARM_VM_PASSWORD" 2>&1 | Tee-Object -FilePath "terraform-plan.log"
+                Get-Content "terraform-init.log"
+                Get-Content "terraform-validate.log"
+                Get-Content "terraform-plan.log"
             displayName: 'Generate Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -47,9 +85,31 @@ stages:
               publishLocation: 'Container'
             displayName: 'Publish Plan Artifact'
 
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/terraform-init.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Terraform Init Log'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/terraform-validate.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Terraform Validate Log'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/terraform-plan.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Terraform Plan Log'
+
   - stage: TerraformApply
     displayName: 'Terraform Apply'
     dependsOn: TerraformPlan
+    condition: succeeded()
     jobs:
       - job: TerraformApplyJob
         displayName: 'Apply Terraform Plan'
@@ -68,14 +128,19 @@ stages:
               scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
+                $ErrorActionPreference = "Stop"
                 cd terraform
+                Write-Host "Running terraform init..."
                 terraform init -upgrade `
                   -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
                   -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
                   -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-                  -backend-config="access_key=$env:ARM_ACCESS_KEY"
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" 2>&1 | Tee-Object -FilePath "terraform-init-apply.log"
+                Write-Host "Running terraform apply..."
                 $planPath = "$(System.ArtifactsDirectory)\$(Build.BuildId)-tfplan\terraform.tfplan"
-                terraform apply -auto-approve -input=false $planPath
+                terraform apply -auto-approve -input=false $planPath 2>&1 | Tee-Object -FilePath "terraform-apply.log"
+                Get-Content "terraform-init-apply.log"
+                Get-Content "terraform-apply.log"
             displayName: 'Apply Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -88,6 +153,7 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
+                $ErrorActionPreference = "Stop"
                 cd terraform
                 $outputDir = "$(System.ArtifactsDirectory)\ssh-keys"
                 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
@@ -101,3 +167,17 @@ stages:
               ArtifactName: '$(Build.BuildId)-outputs'
               publishLocation: 'Container'
             displayName: 'Publish Terraform Outputs'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/terraform-init-apply.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Terraform Init Apply Log'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/terraform-apply.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Terraform Apply Log'
