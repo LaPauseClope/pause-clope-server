@@ -124,14 +124,19 @@ stages:
         TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
 
     - powershell: |
+        $pat = "$env:AZDO_PAT"
+        if (!$pat) {
+          Write-Error "❌ Le PAT est vide. Vérifie que la variable AZDO_PAT est bien définie comme 'secret'."
+          exit 1
+        }
+
+        $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
+
         $org = "https://dev.azure.com/fabiomaratea"
         $project = "HackatonYnov"
         $pipelineId = 13
-        $uri = "$org/_apis/pipelines/$pipelineId/runs?api-version=7.0-preview.1&project=$project" 
+        $uri = "$org/_apis/pipelines/$pipelineId/runs?api-version=7.0-preview.1&project=$project"
 
-        $pat = "$(AZDO_PAT)"
-        $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
-        
         $headers = @{
           Authorization = "Basic $base64AuthInfo"
           "Content-Type" = "application/json"
@@ -139,8 +144,17 @@ stages:
 
         $body = @{} | ConvertTo-Json -Depth 10
 
-        Write-Host "Triggering Ansible pipeline with PAT..."
-        Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-      displayName: 'Trigger Ansible Pipeline (via PAT)'
+        Write-Host "Triggering Ansible pipeline (ID $pipelineId) at $uri..."
+        try {
+          $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
+          Write-Host "Pipeline triggered successfully!"
+          $response | ConvertTo-Json -Depth 10
+        } catch {
+          Write-Error "Invoke-RestMethod failed:"
+          Write-Error $_.Exception.Message
+          Write-Error $_.Exception.Response
+        }
+      displayName: 'Trigger Ansible Pipeline (via fresh PAT)'
       env:
         AZDO_PAT: $(AZDO_PAT)
+
