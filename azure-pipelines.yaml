@@ -8,7 +8,7 @@ trigger:
       - terraform/**
 
 pool:
-  vmImage: 'ubuntu-latest'
+  name: 'SelfHosted'
 
 
 stages:
