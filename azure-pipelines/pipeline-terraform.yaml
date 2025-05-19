@@ -127,7 +127,7 @@ stages:
         $org = "https://dev.azure.com/fabiomaratea"
         $project = "HackatonYnov"
         $pipelineId = 13
-        $uri = "$org/$project/_apis/pipelines/$pipelineId/runs?api-version=7.0"
+        $uri = "$org/_apis/pipelines/$pipelineId/runs?api-version=7.0-preview.1&project=$project" 
 
         $pat = "$(AZDO_PAT)"
         $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
