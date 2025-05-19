@@ -8,8 +8,7 @@ trigger:
       - terraform/**
 
 pool:
-  name: 'SelfHosted'
-
+  name: SelfHosted
 
 stages:
   - stage: TerraformPlan
