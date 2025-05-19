@@ -106,15 +106,15 @@ stages:
                 try {
                   Set-Location -Path terraform
                   terraform plan -out=terraform.tfplan `
-                    -var="client_id=$env:ARM_CLIENT_ID" `
-                    -var="client_secret=$env:ARM_CLIENT_SECRET" `
-                    -var="subscription_id=$env:ARM_SUBSCRIPTION_ID" `
-                    -var="backend_container_name=$env:ARM_CONTAINER_NAME" `
-                    -var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" `
-                    -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-                    -var="backend_access_key=$env:ARM_ACCESS_KEY" `
-                    -var="tenant_id=$env:ARM_TENANT_ID" `
-                    -var="admin_password=$env:ARM_VM_PASSWORD"
+                    --var="client_id=$env:ARM_CLIENT_ID" `
+                    --var="client_secret=$env:ARM_CLIENT_SECRET" `
+                    --var="subscription_id=$env:ARM_SUBSCRIPTION_ID" `
+                    --var="backend_container_name=$env:ARM_CONTAINER_NAME" `
+                    --var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" `
+                    --var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
+                    --var="backend_access_key=$env:ARM_ACCESS_KEY" `
+                    --var="tenant_id=$env:ARM_TENANT_ID" `
+                    --var="admin_password=$env:ARM_VM_PASSWORD"
                   Write-Host "Terraform plan completed successfully."
                 } catch {
                   Write-Error "Terraform plan failed: $_"
