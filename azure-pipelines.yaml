@@ -14,12 +14,11 @@ stages:
       - job: TerraformPlanJob
         displayName: 'Generate Terraform Plan'
         steps:
-          - task: AzureCLI@2
+          - task: AzurePowerShell@5
             inputs:
-              azureSubscription: PauseClope
-              scriptType: ps
-              scriptLocation: inlineScript
-              inlineScript: |
+              azureSubscription: 'PauseClope'
+              ScriptType: 'InlineScript'
+              Inline: |
                 cd terraform
                 terraform init -upgrade `
                   -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
@@ -30,6 +29,7 @@ stages:
                 terraform plan `
                   -out=terraform.tfplan `
                   -var="admin_password=$env:ARM_VM_PASSWORD"
+              preferredAzurePowerShellVersion: 'Latest'
             displayName: 'Generate Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -60,12 +60,11 @@ stages:
               downloadPath: '$(System.ArtifactsDirectory)'
             displayName: 'Download Plan Artifact'
 
-          - task: AzureCLI@2
+          - task: AzurePowerShell@5
             inputs:
-              azureSubscription: PauseClope
-              scriptType: ps
-              scriptLocation: inlineScript
-              inlineScript: |
+              azureSubscription: 'PauseClope'
+              ScriptType: 'InlineScript'
+              Inline: |
                 cd terraform
                 terraform init -upgrade `
                   -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
@@ -82,10 +81,11 @@ stages:
               ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
               ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
 
-          - task: PowerShell@2
+          - task: AzurePowerShell@5
             inputs:
-              targetType: 'inline'
-              script: |
+              azureSubscription: 'PauseClope'
+              ScriptType: 'InlineScript'
+              Inline: |
                 cd terraform
                 terraform init -upgrade `
                   -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
