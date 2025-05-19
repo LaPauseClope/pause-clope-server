@@ -13,8 +13,6 @@ stages:
   jobs:
   - job: Plan
     displayName: 'Run Terraform Plan'
-    pool:
-      name: Default
     steps:
     - checkout: self
 
@@ -60,8 +58,6 @@ stages:
   jobs:
   - job: Apply
     displayName: 'Run Terraform Apply'
-    pool:
-      name: Default
     steps:
     - checkout: self
 
