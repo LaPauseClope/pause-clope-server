@@ -39,17 +39,32 @@ stages:
               ARM_TENANT_ID: $(ARM_TENANT_ID)
               ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
               ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
+
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
               scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
-                Write-Host "Testing Azure login..."
+                Write-Host "Authenticating to Azure using service principal..."
+                $tenantId = $env:ARM_TENANT_ID
+                $clientId = $env:ARM_CLIENT_ID
+                $secret   = $env:ARM_CLIENT_SECRET
+
+                if (-not $tenantId -or -not $clientId -or -not $secret) {
+                  Write-Error "Missing one or more Azure credential environment variables."
+                  exit 1
+                }
+
                 try {
-                  az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
+                  az login --service-principal `
+                    --username $clientId `
+                    --password $secret `
+                    --tenant $tenantId `
+                    --output none
+
                   az account show
-                  Write-Host "Login successful, showing account details..."
+                  Write-Host "Login successful."
                 } catch {
                   Write-Error "Azure login failed: $_"
                   exit 1
