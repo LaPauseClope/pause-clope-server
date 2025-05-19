@@ -46,11 +46,21 @@ stages:
 
           - task: AzureCLI@2
             inputs:
-              azureSubscription: PauseClope
+              azureSubscription: PauseClopeSP  # Updated to new service connection name
               scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 $ErrorActionPreference = "Stop"
+                Write-Host "Suppressing Azure CLI update warnings..."
+                $env:AZURE_EXTENSION_UPDATE_CHECK = "false"
+                Write-Host "Clearing existing Azure CLI credentials..."
+                az account clear 2>&1 | Tee-Object -FilePath "az-clear.log"
+                Write-Host "Attempting Azure CLI login with service principal..."
+                az login --service-principal --username $env:AZURE_CLIENT_ID --password $env:AZURE_CLIENT_SECRET --tenant $env:AZURE_TENANT_ID 2>&1 | Tee-Object -FilePath "az-login.log"
+                if ($LASTEXITCODE -ne 0) { throw "az login failed. Check az-login.log for details." }
+                Write-Host "Setting subscription..."
+                az account set --subscription $env:AZURE_SUBSCRIPTION_ID 2>&1 | Tee-Object -FilePath "az-set.log"
+                Write-Host "Login successful, proceeding with Terraform..."
                 cd terraform
                 Write-Host "Running terraform init..."
                 terraform init -upgrade `
@@ -67,6 +77,9 @@ stages:
                   -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
                   -var="backend_access_key=$env:ARM_ACCESS_KEY" `
                   -var="admin_password=$env:ARM_VM_PASSWORD" 2>&1 | Tee-Object -FilePath "terraform-plan.log"
+                Get-Content "az-clear.log"
+                Get-Content "az-login.log"
+                Get-Content "az-set.log"
                 Get-Content "terraform-init.log"
                 Get-Content "terraform-validate.log"
                 Get-Content "terraform-plan.log"
@@ -77,6 +90,10 @@ stages:
               ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
               ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
               ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
+              AZURE_CLIENT_ID: $(AZURE_CLIENT_ID)
+              AZURE_CLIENT_SECRET: $(AZURE_CLIENT_SECRET)
+              AZURE_TENANT_ID: $(AZURE_TENANT_ID)
+              AZURE_SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
 
           - task: PublishBuildArtifacts@1
             inputs:
@@ -84,6 +101,27 @@ stages:
               ArtifactName: '$(Build.BuildId)-tfplan'
               publishLocation: 'Container'
             displayName: 'Publish Plan Artifact'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/az-clear.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Azure CLI Clear Log'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/az-login.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Azure CLI Login Log'
+
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: terraform/az-set.log
+              ArtifactName: '$(Build.BuildId)-logs'
+              publishLocation: 'Container'
+            displayName: 'Publish Azure CLI Set Log'
 
           - task: PublishBuildArtifacts@1
             inputs:
@@ -124,7 +162,7 @@ stages:
 
           - task: AzureCLI@2
             inputs:
-              azureSubscription: PauseClope
+              azureSubscription: PauseClopeSP  # Updated to new service connection name
               scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
