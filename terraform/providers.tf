@@ -11,7 +11,7 @@ terraform {
     resource_group_name   = var.backend_rg_name
     storage_account_name  = var.backend_account_name 
     container_name        = var.backend_container_name 
-    key                   = "aks/terraform.tfstate"
+    key                   = "terraform.tfstate"
     access_key            = var.backend_access_key
   }
 }
