@@ -24,16 +24,16 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 cd terraform
-                terraform init -upgrade `
-                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
-                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `          
-                terraform plan -out=terraform.tfplan `
-                  -var="backend_container_name=$env:ARM_CONTAINER_NAME" `
-                  -var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" `
-                  -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-                  -var="backend_access_key=$env:ARM_ACCESS_KEY" `
+                terraform init -upgrade \
+                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" \
+                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" \
+                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" \
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" \          
+                terraform plan -out=terraform.tfplan \
+                  -var="backend_container_name=$env:ARM_CONTAINER_NAME" \
+                  -var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" \
+                  -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" \
+                  -var="backend_access_key=$env:ARM_ACCESS_KEY" \
                   -var="admin_password=$env:ARM_VM_PASSWORD"
             displayName: 'Generate Terraform Plan'
             env:
@@ -72,11 +72,11 @@ stages:
               scriptLocation: inlineScript
               inlineScript: |
                 cd terraform
-                terraform init -upgrade `
-                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
-                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `
+                terraform init -upgrade \
+                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" \
+                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" \
+                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" \
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" \
                 $planPath = "$(Build.ArtifactStagingDirectory)\$(Build.BuildId)-tfplan\terraform.tfplan"
                 terraform apply -auto-approve -lock=false -input=false $planPath
             displayName: 'Apply Terraform Plan'
@@ -92,11 +92,11 @@ stages:
               targetType: 'inline'
               script: |
                 cd terraform
-                terraform init -upgrade `
-                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
-                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `
+                terraform init -upgrade \
+                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" \
+                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" \
+                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" \
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" \
                   -backend-config="admin_password=$env:ARM_VM_PASSWORD"
 
                 $outputDir = "$(Build.ArtifactStagingDirectory)\ssh-keys"
