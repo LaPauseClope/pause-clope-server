@@ -144,17 +144,22 @@ stages:
 
         $body = @{} | ConvertTo-Json -Depth 10
 
-        Write-Host "Triggering Ansible pipeline (ID $pipelineId) at $uri..."
+        Write-Host "➡️ Triggering Ansible pipeline (ID $pipelineId)..."
+
         try {
           $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-          Write-Host "Pipeline triggered successfully!"
+          Write-Host "✅ Pipeline triggered successfully!"
           $response | ConvertTo-Json -Depth 10
         } catch {
-          Write-Error "Invoke-RestMethod failed:"
-          Write-Error $_.Exception.Message
-          Write-Error $_.Exception.Response
+          Write-Host "❌ Invoke-RestMethod failed:"
+          Write-Host $_.Exception.Message
+          if ($_.Exception.Response -ne $null) {
+            $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+            $responseBody = $reader.ReadToEnd()
+            Write-Host "`n🔎 Response Body:`n$responseBody"
+          }
+          exit 1
         }
-      displayName: 'Trigger Ansible Pipeline (via fresh PAT)'
+      displayName: '🔥 Trigger Ansible Pipeline (DEBUG)'
       env:
         AZDO_PAT: $(AZDO_PAT)
-
