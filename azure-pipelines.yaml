@@ -9,7 +9,6 @@ variables:
 - name: TF_ROOT
   value: 'terraform'
 
-
 stages:
 - stage: TerraformPlan
   displayName: 'Terraform Plan'
@@ -54,9 +53,7 @@ stages:
         TF_VAR_backend_account_name: $(ARM_STORAGE_ACCOUNT_NAME)
         TF_VAR_backend_container_name: $(ARM_CONTAINER_NAME)
         TF_VAR_backend_access_key: $(ARM_ACCESS_KEY)
-
         TF_VAR_admin_password: $(ARM_VM_PASSWORD)
-
         TF_VAR_subscription_id: $(ARM_AZURE_SUBSCRIPTION_ID)
         TF_VAR_client_id: $(ARM_AZURE_CLIENT_ID)
         TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
@@ -64,7 +61,6 @@ stages:
     - publish: $(TF_ROOT)/tfplan
       artifact: tfplan
       displayName: 'Publish tfplan artifact'
-
 
   - job: Apply
     displayName: 'Run Terraform Apply'
@@ -111,9 +107,7 @@ stages:
         TF_VAR_backend_account_name: $(ARM_STORAGE_ACCOUNT_NAME)
         TF_VAR_backend_container_name: $(ARM_CONTAINER_NAME)
         TF_VAR_backend_access_key: $(ARM_ACCESS_KEY)
-
         TF_VAR_admin_password: $(ARM_VM_PASSWORD)
-
         TF_VAR_subscription_id: $(ARM_AZURE_SUBSCRIPTION_ID)
         TF_VAR_client_id: $(ARM_AZURE_CLIENT_ID)
         TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
