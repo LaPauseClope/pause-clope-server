@@ -126,7 +126,7 @@ stages:
     - powershell: |
         $pat = "$env:AZDO_PAT"
         if (!$pat) {
-          Write-Error " Le PAT est vide. Vérifie que la variable AZDO_PAT est bien définie comme 'secret'."
+          Write-Error "PAT is missing. Make sure AZDO_PAT is set as a secret variable."
           exit 1
         }
 
@@ -146,29 +146,30 @@ stages:
           definition = @{
             id = $pipelineId
           }
+          sourceBranch = "refs/heads/main"
+          parameters = "{}"
         }
 
-        $body = $bodyObject | ConvertTo-Json -Depth 2 -Compress
+        $body = $bodyObject | ConvertTo-Json -Depth 10 -Compress
 
-        Write-Host " JSON body:"
+        Write-Host "Request body:"
         Write-Host $body
-
-        Write-Host " Triggering build pipeline definition ID $pipelineId..."
 
         try {
           $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-          Write-Host " Triggered successfully!"
+          Write-Host "Pipeline triggered successfully!"
           $response | ConvertTo-Json -Depth 10
         } catch {
-          Write-Host " Invoke-RestMethod failed:"
+          Write-Host "Invoke-RestMethod failed:"
           Write-Host $_.Exception.Message
           if ($_.Exception.Response -ne $null) {
             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
             $responseBody = $reader.ReadToEnd()
-            Write-Host "`n🔎 Response Body:`n$responseBody"
+            Write-Host "Response Body:"
+            Write-Host $responseBody
           }
           exit 1
         }
-      displayName: ' Trigger Classic Pipeline (final working version)'
+      displayName: 'Trigger Classic Pipeline (with branch)'
       env:
         AZDO_PAT: $(AZDO_PAT)
