@@ -29,7 +29,7 @@ stages:
                 terraform plan `
                   -out=terraform.tfplan `
                   -var="admin_password=$env:ARM_VM_PASSWORD"
-              preferredAzurePowerShellVersion: 'Latest'
+              preferredAzurePowerShellVersion: '5.10.0'
             displayName: 'Generate Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -73,6 +73,7 @@ stages:
                   -backend-config="access_key=$env:ARM_ACCESS_KEY"
                 $planPath = "$(System.ArtifactsDirectory)\$(Build.BuildId)-tfplan\terraform.tfplan"
                 terraform apply -auto-approve -lock=false -input=false "$planPath"
+              preferredAzurePowerShellVersion: '5.10.0'
             displayName: 'Apply Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -96,6 +97,7 @@ stages:
                 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
                 terraform output -json | Out-File "$outputDir\terraform-outputs.json"
                 Get-Content "$outputDir\terraform-outputs.json"
+              preferredAzurePowerShellVersion: '5.10.0'
             displayName: 'Capture Terraform Outputs'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
