@@ -142,16 +142,13 @@ stages:
           "Content-Type" = "application/json"
         }
 
-        $body = @{
-          definition = @{ id = $pipelineId }
-        } | ConvertTo-Json -Depth 10
+        $body = "{ `"definition`": { `"id`": $pipelineId } }"
 
-
-        Write-Host "riggering Ansible pipeline (ID $pipelineId)..."
+        Write-Host "Triggering build pipeline definition ID $pipelineId..."
 
         try {
           $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-          Write-Host "Pipeline triggered successfully!"
+          Write-Host "Triggered successfully!"
           $response | ConvertTo-Json -Depth 10
         } catch {
           Write-Host "Invoke-RestMethod failed:"
@@ -163,6 +160,6 @@ stages:
           }
           exit 1
         }
-      displayName: '🔥 Trigger Ansible Pipeline (DEBUG)'
+      displayName: ' Trigger Classic Pipeline (fixed body format)'
       env:
         AZDO_PAT: $(AZDO_PAT)
