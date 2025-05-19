@@ -49,7 +49,7 @@ stages:
               ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
           - task: PublishBuildArtifacts@1
             inputs:
-              PathtoPublish: infra/terraform/terraform.tfplan
+              PathtoPublish: terraform/terraform.tfplan
               ArtifactName: '$(Build.BuildId)-tfplan'
               publishLocation: 'Container'
             displayName: 'Publish Plan Artifact'
