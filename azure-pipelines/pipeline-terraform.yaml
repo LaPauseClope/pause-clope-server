@@ -10,9 +10,6 @@ variables:
   value: 'terraform'
 - name: ANSIBLE_PIPELINE_ID
   value: '13'
-- name: AZDO_PAT
-  value: $(AZDO_PAT)
-
 
 stages:
 
@@ -145,3 +142,5 @@ stages:
         Write-Host "Triggering Ansible pipeline with PAT..."
         Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
       displayName: 'Trigger Ansible Pipeline (via PAT)'
+      env:
+        AZDO_PAT: $(AZDO_PAT)
