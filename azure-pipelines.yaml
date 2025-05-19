@@ -1,6 +1,5 @@
 variables:
   - group: LaPauseClope
-  system.debug: true
 
 trigger:
   - devops
