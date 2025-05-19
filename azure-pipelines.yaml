@@ -5,7 +5,10 @@ pool:
   name: SelfHosted
 
 variables:
-  TF_ROOT: 'terraform'
+- group: LaPauseClope
+- name: TF_ROOT
+  value: 'terraform'
+
 
 stages:
 - stage: TerraformPlan
