@@ -25,8 +25,11 @@ stages:
                   -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
                   -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
                   -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `          
-                terraform plan -out=terraform.tfplan `
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `
+                  -backend-config="admin_password=$env:ARM_VM_PASSWORD"
+
+                terraform plan `
+                  -out=terraform.tfplan `
                   -var="backend_container_name=$env:ARM_CONTAINER_NAME" `
                   -var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" `
                   -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
