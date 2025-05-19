@@ -23,3 +23,19 @@ variable "backend_access_key" {
 variable "admin_password" {  
   description = "Clé d'accès pour le compte de stockage du backend Terraform"
 }
+
+variable "subscription_id" {  
+  description = "ID de la souscription Azure"
+}
+
+variable "client_id" {  
+  description = "ID du client Azure AD"
+}
+
+variable "client_secret" { 
+  description = "Secret du client Azure AD"
+}
+
+variable "tenant_id" {  
+  description = "ID du tenant Azure AD"
+}
