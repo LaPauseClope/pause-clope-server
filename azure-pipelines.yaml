@@ -2,11 +2,8 @@ variables:
   - group: LaPauseClope
 
 trigger:
-  paths:
-    include:
-      - azure-pipeline.yaml
-      - terraform/**
-
+  - devops
+  
 pool:
   name: SelfHosted
 
