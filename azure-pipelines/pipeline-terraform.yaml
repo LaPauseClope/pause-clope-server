@@ -126,7 +126,7 @@ stages:
     - powershell: |
         $pat = "$env:AZDO_PAT"
         if (!$pat) {
-          Write-Error "❌ Le PAT est vide. Vérifie que la variable AZDO_PAT est bien définie comme 'secret'."
+          Write-Error "Le PAT est vide. Vérifie que la variable AZDO_PAT est bien définie comme 'secret'."
           exit 1
         }
 
@@ -135,28 +135,31 @@ stages:
         $org = "https://dev.azure.com/fabiomaratea"
         $project = "HackatonYnov"
         $pipelineId = 13
-        $uri = "$org/_apis/pipelines/$pipelineId/runs?api-version=7.0-preview.1&project=$project"
+        $uri = "$org/$project/_apis/build/builds?api-version=6.0"
 
         $headers = @{
           Authorization = "Basic $base64AuthInfo"
           "Content-Type" = "application/json"
         }
 
-        $body = @{} | ConvertTo-Json -Depth 10
+        $body = @{
+          definition = @{ id = $pipelineId }
+        } | ConvertTo-Json -Depth 10
 
-        Write-Host "➡️ Triggering Ansible pipeline (ID $pipelineId)..."
+
+        Write-Host "riggering Ansible pipeline (ID $pipelineId)..."
 
         try {
           $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-          Write-Host "✅ Pipeline triggered successfully!"
+          Write-Host "Pipeline triggered successfully!"
           $response | ConvertTo-Json -Depth 10
         } catch {
-          Write-Host "❌ Invoke-RestMethod failed:"
+          Write-Host "Invoke-RestMethod failed:"
           Write-Host $_.Exception.Message
           if ($_.Exception.Response -ne $null) {
             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
             $responseBody = $reader.ReadToEnd()
-            Write-Host "`n🔎 Response Body:`n$responseBody"
+            Write-Host "`n Response Body:`n$responseBody"
           }
           exit 1
         }
