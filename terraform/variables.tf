@@ -19,3 +19,7 @@ variable "backend_account_name" {
 variable "backend_access_key" {  
   description = "Clé d'accès pour le compte de stockage du backend Terraform"
 }
+
+variable "admin_password" {  
+  description = "Clé d'accès pour le compte de stockage du backend Terraform"
+}

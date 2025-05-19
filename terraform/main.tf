@@ -35,6 +35,7 @@ resource "azurerm_linux_virtual_machine" "lapauseclope" {
   location            = azurerm_resource_group.lapauseclope.location
   size                = "Standard_F2"
   admin_username      = "adminuser"
+  admin_password      = var.admin_password
   network_interface_ids = [
     azurerm_network_interface.lapauseclope.id,
   ]

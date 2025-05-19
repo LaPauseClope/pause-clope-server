@@ -12,85 +12,91 @@ pool:
 
 
 stages:
-  - stage: TerraformPlanAKS
-    displayName: 'Terraform Plan for AKS'
+  - stage: TerraformPlan
+    displayName: 'Terraform Plan'
     jobs:
-      - job: TerraformPlanJobAKS
-        displayName: 'Generate Terraform Plan for AKS'
+      - job: TerraformPlanJob
+        displayName: 'Generate Terraform Plan'
         steps:
           - task: AzureCLI@2
             inputs:
-              azureSubscription: Terraks
+              azureSubscription: PauseClope
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                cd infra/terraform/aks
+                cd terraform
                 terraform init -upgrade \
                   -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" \
                   -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
                   -backend-config="container_name=$(ARM_CONTAINER_NAME)" \
-                  -backend-config="access_key=$(ARM_ACCESS_KEY)"
+                  -backend-config="access_key=$(ARM_ACCESS_KEY)" \
+                  -backend-config="admin_password=$(ARM_VM_PASSWORD)"
                 terraform plan -out=terraform.tfplan \
                   -var="backend_container_name=$(ARM_CONTAINER_NAME)" \
                   -var="backend_rg_name=$(ARM_RESOURCE_GROUP_NAME)" \
                   -var="backend_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
                   -var="backend_access_key=$(ARM_ACCESS_KEY)" \
-            displayName: 'Generate Terraform Plan for AKS'
+                  -var="admin_password=$(ARM_VM_PASSWORD)"
+            displayName: 'Generate Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
               ARM_CONTAINER_NAME: $(ARM_CONTAINER_NAME)
               ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
               ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
+              ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
           - task: PublishBuildArtifacts@1
             inputs:
-              PathtoPublish: infra/terraform/aks/terraform.tfplan
-              ArtifactName: '$(Build.BuildId)-tfplan-aks'
+              PathtoPublish: terraform/terraform.tfplan
+              ArtifactName: '$(Build.BuildId)-tfplan'
               publishLocation: 'Container'
-            displayName: 'Publish Plan Artifact for AKS'
+            displayName: 'Publish Plan Artifact'
 
-  - stage: TerraformApplyAKS
-    displayName: 'Terraform Apply for AKS'
-    dependsOn: TerraformPlanAKS
+  - stage: TerraformApply
+    displayName: 'Terraform Apply'
+    dependsOn: TerraformPlan
     jobs:
-      - job: TerraformApplyJobAKS
-        displayName: 'Apply Terraform Plan for AKS'
+      - job: TerraformApplyJob
+        displayName: 'Apply Terraform Plan'
         steps:
           - task: DownloadBuildArtifacts@0
             inputs:
               buildType: 'current'
               downloadType: 'single'
-              artifactName: '$(Build.BuildId)-tfplan-aks'
+              artifactName: '$(Build.BuildId)-tfplan'
               downloadPath: '$(System.ArtifactsDirectory)'
-            displayName: 'Download Plan Artifact for AKS'
+            displayName: 'Download Plan Artifact'
           - task: AzureCLI@2
             inputs:
-              azureSubscription: Terraks
+              azureSubscription: PauseClope
               scriptType: bash
               scriptLocation: inlineScript
               inlineScript: |
-                cd infra/terraform/aks
+                cd terraform
                 terraform init -upgrade \
                   -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" \
                   -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
                   -backend-config="container_name=$(ARM_CONTAINER_NAME)" \
-                  -backend-config="access_key=$(ARM_ACCESS_KEY)"
-                terraform apply -auto-approve -lock=false -input=false $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-tfplan-aks/terraform.tfplan
-            displayName: 'Apply Terraform Plan for AKS'
+                  -backend-config="access_key=$(ARM_ACCESS_KEY)" \
+                  -backend-config="admin_password=$(ARM_VM_PASSWORD)"
+                terraform apply -auto-approve -lock=false -input=false $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-tfplan/terraform.tfplan
+            displayName: 'Apply Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
               ARM_CONTAINER_NAME: $(ARM_CONTAINER_NAME)
               ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
               ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
+              ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
           - task: Bash@3
             inputs:
               targetType: 'inline'
               script: |
-                cd infra/terraform/aks
+                cd terraform
                 terraform init -upgrade \
                   -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" \
                   -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
                   -backend-config="container_name=$(ARM_CONTAINER_NAME)" \
-                  -backend-config="access_key=$(ARM_ACCESS_KEY)"
+                  -backend-config="access_key=$(ARM_ACCESS_KEY)" \
+                  -backend-config="admin_password=$(ARM_VM_PASSWORD)"
                 mkdir -p $(Build.ArtifactStagingDirectory)/ssh-keys
                 terraform output -json > $(Build.ArtifactStagingDirectory)/ssh-keys/terraform-outputs.json
                 cat $(Build.ArtifactStagingDirectory)/ssh-keys/terraform-outputs.json
