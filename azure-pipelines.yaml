@@ -28,15 +28,26 @@ stages:
                 Get-Location
                 Write-Host "Listing directory contents..."
                 Get-ChildItem -Path .
+                Write-Host "Checking environment variables..."
+                Write-Host "ARM_CLIENT_ID: $env:ARM_CLIENT_ID"
+                Write-Host "ARM_TENANT_ID: $env:ARM_TENANT_ID"
+                Write-Host "ARM_SUBSCRIPTION_ID: $env:ARM_SUBSCRIPTION_ID"
+                Write-Host "ARM_RESOURCE_GROUP_NAME: $env:ARM_RESOURCE_GROUP_NAME"
             displayName: 'Check Environment'
+            env:
+              ARM_CLIENT_ID: $(ARM_CLIENT_ID)
+              ARM_TENANT_ID: $(ARM_TENANT_ID)
+              ARM_SUBSCRIPTION_ID: $(ARM_SUBSCRIPTION_ID)
+              ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: powershell
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 Write-Host "Testing Azure login..."
                 try {
+                  az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
                   az account show
                   Write-Host "Login successful, showing account details..."
                 } catch {
@@ -51,11 +62,17 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: powershell
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 Write-Host "Navigating to terraform directory..."
-                Set-Location -Path terraform
+                try {
+                  Set-Location -Path terraform
+                  Write-Host "Current directory: $(Get-Location)"
+                } catch {
+                  Write-Error "Failed to navigate to terraform directory: $_"
+                  exit 1
+                }
                 Write-Host "Running terraform init..."
                 try {
                   terraform init -upgrade `
@@ -82,12 +99,12 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: powershell
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 Write-Host "Running terraform plan..."
-                Set-Location -Path terraform
                 try {
+                  Set-Location -Path terraform
                   terraform plan -out=terraform.tfplan `
                     -var="client_id=$env:ARM_CLIENT_ID" `
                     -var="client_secret=$env:ARM_CLIENT_SECRET" `
@@ -138,11 +155,12 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: powershell
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 Write-Host "Testing Azure login..."
                 try {
+                  az login --service-principal -u $env:ARM_CLIENT_ID -p $env:ARM_CLIENT_SECRET --tenant $env:ARM_TENANT_ID
                   az account show
                   Write-Host "Login successful, showing account details..."
                 } catch {
@@ -157,11 +175,17 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: powershell
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 Write-Host "Navigating to terraform directory..."
-                Set-Location -Path terraform
+                try {
+                  Set-Location -Path terraform
+                  Write-Host "Current directory: $(Get-Location)"
+                } catch {
+                  Write-Error "Failed to navigate to terraform directory: $_"
+                  exit 1
+                }
                 Write-Host "Running terraform init..."
                 try {
                   terraform init -upgrade `
@@ -187,12 +211,12 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: powershell
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 Write-Host "Running terraform apply..."
-                Set-Location -Path terraform
                 try {
+                  Set-Location -Path terraform
                   terraform apply -auto-approve -lock=false -input=false $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-tfplan/terraform.tfplan
                   Write-Host "Terraform apply completed successfully."
                 } catch {
@@ -214,7 +238,13 @@ stages:
               targetType: 'inline'
               script: |
                 Write-Host "Navigating to terraform directory..."
-                Set-Location -Path terraform
+                try {
+                  Set-Location -Path terraform
+                  Write-Host "Current directory: $(Get-Location)"
+                } catch {
+                  Write-Error "Failed to navigate to terraform directory: $_"
+                  exit 1
+                }
                 Write-Host "Running terraform init..."
                 try {
                   terraform init -upgrade `
@@ -228,8 +258,8 @@ stages:
                   exit 1
                 }
                 Write-Host "Capturing terraform outputs..."
-                New-Item -ItemType Directory -Path "$(Build.ArtifactStagingDirectory)/ssh-keys" -Force
                 try {
+                  New-Item -ItemType Directory -Path "$(Build.ArtifactStagingDirectory)/ssh-keys" -Force
                   terraform output -json | Out-File -FilePath "$(Build.ArtifactStagingDirectory)/ssh-keys/terraform-outputs.json"
                   Get-Content -Path "$(Build.ArtifactStagingDirectory)/ssh-keys/terraform-outputs.json"
                   Write-Host "Terraform outputs captured successfully."
