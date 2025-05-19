@@ -135,16 +135,24 @@ stages:
         $org = "https://dev.azure.com/fabiomaratea"
         $project = "HackatonYnov"
         $pipelineId = 13
-        $uri = "$org/_apis/pipelines/$pipelineId/runs?api-version=7.0-preview.1&project=$project"
+        $uri = "$org/$project/_apis/build/builds?api-version=6.0"
 
         $headers = @{
           Authorization = "Basic $base64AuthInfo"
           "Content-Type" = "application/json"
         }
 
-        $body = "{}"
+        $bodyObject = @{
+          definition = @{
+            id = $pipelineId
+          }
+          sourceBranch = "refs/heads/main"
+        }
 
-        Write-Host "Triggering YAML pipeline ID $pipelineId..."
+        $body = $bodyObject | ConvertTo-Json -Depth 10 -Compress
+
+        Write-Host "Triggering classic pipeline with ID $pipelineId..."
+        Write-Host "Body: $body"
 
         try {
           $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
@@ -161,6 +169,6 @@ stages:
           }
           exit 1
         }
-      displayName: 'Trigger Ansible YAML Pipeline'
+      displayName: 'Trigger Classic Build Pipeline (final)'
       env:
         AZDO_PAT: $(AZDO_PAT)
