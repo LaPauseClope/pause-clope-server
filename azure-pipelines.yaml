@@ -18,9 +18,12 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                Write-Host "Checking PowerShell version..."
-                $PSVersionTable.PSVersion
-                Write-Host "Checking Azure CLI version..."
+                Write-Host "Installing or updating Azure CLI..."
+
+                Invoke-WebRequest -Uri https://aka.ms/installazurecliwindows -OutFile .\AzureCLI.msi
+                Start-Process msiexec.exe -Wait -ArgumentList '/I AzureCLI.msi /quiet /qn /norestart'
+
+                Write-Host "Azure CLI version after install:"
                 az --version
                 Write-Host "Checking Terraform version..."
                 try { terraform --version } catch { Write-Error "Terraform not found or failed: $_" }
