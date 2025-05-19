@@ -15,3 +15,8 @@ terraform {
     access_key            = var.backend_access_key
   }
 }
+
+provider "azurerm" {
+  resource_provider_registrations = "none" 
+  features {}
+}
