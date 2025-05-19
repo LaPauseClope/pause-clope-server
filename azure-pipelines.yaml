@@ -76,9 +76,13 @@ stages:
     - download: current
       artifact: tfplan
       displayName: 'Download tfplan artifact'
+    - powershell: |
+        Get-ChildItem -Recurse $env:PIPELINE_WORKSPACE
+      displayName: 'Show downloaded artifact files'
+
 
     - powershell: |
-        terraform apply -auto-approve "$env:PIPELINE_WORKSPACE\_tfplan\tfplan"
+        terraform apply -auto-approve "$env:PIPELINE_WORKSPACE\tfplan\tfplan"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Apply'
       env:
