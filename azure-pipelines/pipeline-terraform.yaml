@@ -126,7 +126,7 @@ stages:
     - powershell: |
         $pat = "$env:AZDO_PAT"
         if (!$pat) {
-          Write-Error "Le PAT est vide. Vérifie que la variable AZDO_PAT est bien définie comme 'secret'."
+          Write-Error " Le PAT est vide. Vérifie que la variable AZDO_PAT est bien définie comme 'secret'."
           exit 1
         }
 
@@ -142,24 +142,33 @@ stages:
           "Content-Type" = "application/json"
         }
 
-        $body = "{ `"definition`": { `"id`": $pipelineId } }"
+        $bodyObject = @{
+          definition = @{
+            id = $pipelineId
+          }
+        }
 
-        Write-Host "Triggering build pipeline definition ID $pipelineId..."
+        $body = $bodyObject | ConvertTo-Json -Depth 2 -Compress
+
+        Write-Host " JSON body:"
+        Write-Host $body
+
+        Write-Host " Triggering build pipeline definition ID $pipelineId..."
 
         try {
           $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-          Write-Host "Triggered successfully!"
+          Write-Host " Triggered successfully!"
           $response | ConvertTo-Json -Depth 10
         } catch {
-          Write-Host "Invoke-RestMethod failed:"
+          Write-Host " Invoke-RestMethod failed:"
           Write-Host $_.Exception.Message
           if ($_.Exception.Response -ne $null) {
             $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
             $responseBody = $reader.ReadToEnd()
-            Write-Host "`n Response Body:`n$responseBody"
+            Write-Host "`n🔎 Response Body:`n$responseBody"
           }
           exit 1
         }
-      displayName: ' Trigger Classic Pipeline (fixed body format)'
+      displayName: ' Trigger Classic Pipeline (final working version)'
       env:
         AZDO_PAT: $(AZDO_PAT)
