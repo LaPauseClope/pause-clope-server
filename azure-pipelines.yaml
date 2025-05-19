@@ -61,12 +61,11 @@ stages:
         TF_VAR_client_id: $(ARM_AZURE_CLIENT_ID)
         TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
         TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
+    - publish: $(TF_ROOT)/tfplan
+      artifact: tfplan
+      displayName: 'Publish tfplan artifact'
 
-- stage: TerraformApply
-  displayName: 'Terraform Apply'
-  dependsOn: TerraformPlan
-  condition: succeeded()
-  jobs:
+
   - job: Apply
     displayName: 'Run Terraform Apply'
     pool:
@@ -74,11 +73,17 @@ stages:
     steps:
     - checkout: self
 
+    - download: current
+      artifact: tfplan
+      displayName: 'Download tfplan artifact'
+
     - powershell: |
-        terraform apply -auto-approve tfplan
+        terraform apply -auto-approve "$env:PIPELINE_WORKSPACE\_tfplan\tfplan"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Apply'
       env:
+        PIPELINE_WORKSPACE: $(Pipeline.Workspace)
+
         ARM_CLIENT_ID: $(ARM_AZURE_CLIENT_ID)
         ARM_CLIENT_SECRET: $(ARM_AZURE_CLIENT_SECRET)
         ARM_SUBSCRIPTION_ID: $(ARM_AZURE_SUBSCRIPTION_ID)
@@ -95,4 +100,3 @@ stages:
         TF_VAR_client_id: $(ARM_AZURE_CLIENT_ID)
         TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
         TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
-
