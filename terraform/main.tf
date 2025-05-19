@@ -1,6 +1,5 @@
 data "azurerm_resource_group" "lapauseclope" {
   name     = "LaPauseClope"
-  location = var.location
 }
 
 resource "azurerm_virtual_network" "lapauseclope" {
