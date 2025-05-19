@@ -17,7 +17,7 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: pscore
+              scriptType: powershell
               scriptLocation: inlineScript
               inlineScript: |
                 Set-Location -Path terraform
@@ -71,7 +71,7 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: pscore
+              scriptType: powershell
               scriptLocation: inlineScript
               inlineScript: |
                 Set-Location -Path terraform
