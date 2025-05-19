@@ -20,22 +20,23 @@ stages:
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: bash
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 cd terraform
-                terraform init -upgrade \
-                  -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" \
-                  -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
-                  -backend-config="container_name=$(ARM_CONTAINER_NAME)" \
-                  -backend-config="access_key=$(ARM_ACCESS_KEY)" \
-                  -backend-config="admin_password=$(ARM_VM_PASSWORD)"
-                terraform plan -out=terraform.tfplan \
-                  -var="backend_container_name=$(ARM_CONTAINER_NAME)" \
-                  -var="backend_rg_name=$(ARM_RESOURCE_GROUP_NAME)" \
-                  -var="backend_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
-                  -var="backend_access_key=$(ARM_ACCESS_KEY)" \
-                  -var="admin_password=$(ARM_VM_PASSWORD)"
+                terraform init -upgrade `
+                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
+                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
+                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `
+                  -backend-config="admin_password=$env:ARM_VM_PASSWORD"
+                
+                terraform plan -out=terraform.tfplan `
+                  -var="backend_container_name=$env:ARM_CONTAINER_NAME" `
+                  -var="backend_rg_name=$env:ARM_RESOURCE_GROUP_NAME" `
+                  -var="backend_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
+                  -var="backend_access_key=$env:ARM_ACCESS_KEY" `
+                  -var="admin_password=$env:ARM_VM_PASSWORD"
             displayName: 'Generate Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -43,6 +44,7 @@ stages:
               ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
               ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
               ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
+
           - task: PublishBuildArtifacts@1
             inputs:
               PathtoPublish: terraform/terraform.tfplan
@@ -64,20 +66,23 @@ stages:
               artifactName: '$(Build.BuildId)-tfplan'
               downloadPath: '$(System.ArtifactsDirectory)'
             displayName: 'Download Plan Artifact'
+
           - task: AzureCLI@2
             inputs:
               azureSubscription: PauseClope
-              scriptType: bash
+              scriptType: ps
               scriptLocation: inlineScript
               inlineScript: |
                 cd terraform
-                terraform init -upgrade \
-                  -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" \
-                  -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
-                  -backend-config="container_name=$(ARM_CONTAINER_NAME)" \
-                  -backend-config="access_key=$(ARM_ACCESS_KEY)" \
-                  -backend-config="admin_password=$(ARM_VM_PASSWORD)"
-                terraform apply -auto-approve -lock=false -input=false $(Build.ArtifactStagingDirectory)/$(Build.BuildId)-tfplan/terraform.tfplan
+                terraform init -upgrade `
+                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
+                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
+                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `
+                  -backend-config="admin_password=$env:ARM_VM_PASSWORD"
+
+                $planPath = "$(Build.ArtifactStagingDirectory)\$(Build.BuildId)-tfplan\terraform.tfplan"
+                terraform apply -auto-approve -lock=false -input=false $planPath
             displayName: 'Apply Terraform Plan'
             env:
               ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
@@ -85,18 +90,22 @@ stages:
               ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
               ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
               ARM_VM_PASSWORD: $(ARM_VM_PASSWORD)
-          - task: Bash@3
+
+          - task: PowerShell@2
             inputs:
               targetType: 'inline'
               script: |
                 cd terraform
-                terraform init -upgrade \
-                  -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" \
-                  -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" \
-                  -backend-config="container_name=$(ARM_CONTAINER_NAME)" \
-                  -backend-config="access_key=$(ARM_ACCESS_KEY)" \
-                  -backend-config="admin_password=$(ARM_VM_PASSWORD)"
-                mkdir -p $(Build.ArtifactStagingDirectory)/ssh-keys
-                terraform output -json > $(Build.ArtifactStagingDirectory)/ssh-keys/terraform-outputs.json
-                cat $(Build.ArtifactStagingDirectory)/ssh-keys/terraform-outputs.json
+                terraform init -upgrade `
+                  -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
+                  -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
+                  -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
+                  -backend-config="access_key=$env:ARM_ACCESS_KEY" `
+                  -backend-config="admin_password=$env:ARM_VM_PASSWORD"
+
+                $outputDir = "$(Build.ArtifactStagingDirectory)\ssh-keys"
+                New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+
+                terraform output -json | Out-File "$outputDir\terraform-outputs.json"
+                Get-Content "$outputDir\terraform-outputs.json"
             displayName: 'Capture Terraform Outputs'
