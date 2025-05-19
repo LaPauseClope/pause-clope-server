@@ -6,7 +6,7 @@ resource "azurerm_resource_group" "lapauseclope" {
 resource "azurerm_virtual_network" "lapauseclope" {
   name                = "lapauseclope-network"
   address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.lapauseclope.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.lapauseclope.name
 }
 
@@ -19,7 +19,7 @@ resource "azurerm_subnet" "lapauseclope" {
 
 resource "azurerm_network_interface" "lapauseclope" {
   name                = "lapauseclope-nic"
-  location            = azurerm_resource_group.lapauseclope.location
+  location            = var.location
   resource_group_name = azurerm_resource_group.lapauseclope.name
 
   ip_configuration {
@@ -32,7 +32,7 @@ resource "azurerm_network_interface" "lapauseclope" {
 resource "azurerm_linux_virtual_machine" "lapauseclope" {
   name                = "lapauseclope-machine"
   resource_group_name = azurerm_resource_group.lapauseclope.name
-  location            = azurerm_resource_group.lapauseclope.location
+  location            = var.location
   size                = "Standard_F2"
   admin_username      = "adminuser"
   admin_password      = var.admin_password
