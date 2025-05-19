@@ -1,6 +1,9 @@
 trigger:
 - devops
 
+pool:
+  name: SelfHosted
+
 variables:
   TF_ROOT: 'terraform'
 
