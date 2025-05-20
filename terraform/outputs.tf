@@ -4,5 +4,5 @@ output "vm_public_ip" {
 
 output "ssh_private_key" {
   value     = tls_private_key.lapauseclope.private_key_pem
-  sensitive = true
+  sensitive = false
 }
