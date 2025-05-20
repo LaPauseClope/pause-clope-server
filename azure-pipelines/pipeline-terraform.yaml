@@ -375,7 +375,7 @@ stages:
 
         # === Ajuster les permissions sous Windows
         icacls "$sshKeyDest" /inheritance:d
-        icacls "$sshKeyDest" /grant:r "$env:USERNAME:F"
+        icacls "$sshKeyDest" /grant "$env:USERNAME":F
         icacls "$sshKeyDest" /remove "Everyone"
         icacls "$sshKeyDest" /remove "Authenticated Users"
 
