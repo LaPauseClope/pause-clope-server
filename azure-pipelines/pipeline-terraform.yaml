@@ -124,51 +124,15 @@ stages:
         TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
 
     - powershell: |
-        $pat = "$env:AZDO_PAT"
-        if (!$pat) {
-          Write-Error "PAT is missing. Make sure AZDO_PAT is set as a secret variable."
-          exit 1
-        }
+        Write-Host "Récupération de la clé privée générée par Terraform..."
+        $privateKey = terraform output -raw ssh_private_key
 
-        $base64AuthInfo = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes(":$pat"))
+        $keyPath = "$(System.DefaultWorkingDirectory)\id_rsa"
+        $privateKey | Out-File -Encoding ascii -FilePath $keyPath -Force
 
-        $org = "https://dev.azure.com/fabiomaratea"
-        $project = "HackatonYnov"
-        $pipelineId = 13
-        $uri = "$org/$project/_apis/build/builds?api-version=6.0"
+        Write-Host "Application des permissions strictes sur la clé..."
+        icacls $keyPath /inheritance:r /grant:r "$env:USERNAME:F"
 
-        $headers = @{
-          Authorization = "Basic $base64AuthInfo"
-          "Content-Type" = "application/json"
-        }
-
-        $bodyObject = @{
-          definition = @{
-            id = $pipelineId
-          }
-          sourceBranch = "refs/heads/main"
-        }
-
-        $body = $bodyObject | ConvertTo-Json -Depth 10 -Compress
-
-        Write-Host "Triggering classic pipeline with ID $pipelineId..."
-        Write-Host "Body: $body"
-
-        try {
-          $response = Invoke-RestMethod -Uri $uri -Method POST -Headers $headers -Body $body
-          Write-Host "Pipeline triggered successfully!"
-          $response | ConvertTo-Json -Depth 10
-        } catch {
-          Write-Host "Invoke-RestMethod failed:"
-          Write-Host $_.Exception.Message
-          if ($_.Exception.Response -ne $null) {
-            $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-            $responseBody = $reader.ReadToEnd()
-            Write-Host "Response Body:"
-            Write-Host $responseBody
-          }
-          exit 1
-        }
-      displayName: 'Trigger Classic Build Pipeline (final)'
-      env:
-        AZDO_PAT: $(AZDO_PAT)
+        Write-Host "Clé SSH disponible à : $keyPath"
+      workingDirectory: $(TF_ROOT)
+      displayName: 'Export & Secure SSH Private Key (Windows)'

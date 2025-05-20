@@ -2,6 +2,11 @@ data "azurerm_resource_group" "lapauseclope" {
   name     = "LaPauseClope"
 }
 
+resource "tls_private_key" "lapauseclope" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
 resource "azurerm_virtual_network" "lapauseclope" {
   name                = "lapauseclope-network"
   address_space       = ["10.0.0.0/16"]
@@ -43,14 +48,13 @@ resource "azurerm_linux_virtual_machine" "lapauseclope" {
   location            = var.location
   size                = "Standard_F2"
   admin_username      = "adminuser"
-  admin_password      = var.admin_password
   network_interface_ids = [
     azurerm_network_interface.lapauseclope.id,
   ]
 
   admin_ssh_key {
     username   = "adminuser"
-    public_key = file("~/.ssh/id_rsa.pub")
+    public_key = tls_private_key.lapauseclope.public_key_openssh
   }
 
   os_disk {
