@@ -363,24 +363,25 @@ stages:
       displayName: 'Générer inventory dynamique avec IP + clé privée WSL'
 
     - powershell: |
-        # === PARAMÈTRES ===
+        # === Chemins
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
         $sshKeySrc = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
         $sshKeyDest = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
 
-        # === SAUVEGARDE DE LA CLÉ PRIVÉE AVEC BONNES PERMISSIONS ===
+        # === Écriture propre de la clé privée
         $privateKeyContent = Get-Content -Path $sshKeySrc -Raw
         Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
 
-        # === CONVERSION VERS CHEMIN WSL ===
+        # === Chemin WSL propre
         $drive = $sshKeyDest.Substring(0,1).ToLower()
-        $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/')
+        $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/').TrimStart('/')
         $wslKeyPath = "/mnt/$drive/$pathWithoutDrive"
 
-        # === CHMOD + TEST SSH ===
+        # === Chmod dans WSL
         Write-Host "Appliquer chmod 600 à $wslKeyPath"
         wsl bash -c "chmod 600 '$wslKeyPath'"
 
+        # === Test SSH
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
         $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
         wsl bash -c "$sshCmd" 2>&1 | Tee-Object -Variable sshOutput
