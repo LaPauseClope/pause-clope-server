@@ -54,7 +54,14 @@
     - debug:
         msg: "Dockerfile exists: {{ dockerfile_check.stat.exists }}, Compose exists: {{ compose_check.stat.exists }}"
 
-    - name: Start services
-      shell: docker-compose -f /home/adminuser/docker-compose.yml up -d
+    - name: Add adminuser to docker group
+      user:
+        name: adminuser
+        groups: docker
+        append: yes
       become: yes
-      become_user: adminuser
+
+    - name: Start services with Docker Compose
+      shell: sudo docker-compose -f /home/adminuser/docker-compose.yml up -d
+      args:
+        chdir: /home/adminuser
