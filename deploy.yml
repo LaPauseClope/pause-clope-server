@@ -32,6 +32,12 @@
         state: started
         enabled: yes
 
+    - name: Ensure docker cli-plugins directory exists
+      file:
+        path: /usr/local/lib/docker/cli-plugins
+        state: directory
+        mode: '0755'
+
     - name: Install Docker Compose v2 manually
       get_url:
         url: https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-linux-x86_64
