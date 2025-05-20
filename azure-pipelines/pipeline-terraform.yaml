@@ -154,19 +154,19 @@ stages:
           exit 1
         }
 
+        Write-Host "Running playbook..."
         $playbookPath = "$(System.DefaultWorkingDirectory)\deploy.yml"
         $playbookWSL = "/mnt/c" + $playbookPath.Substring(2).Replace('\', '/')
 
-        Write-Host "Running playbook..."
-        $ansibleOutput = wsl bash -c "ansible-playbook -i $wslInventoryPath $playbookWSL --private-key $wslKeyPath -u adminuser -vvv 2>&1"
+        $ansibleOutput = wsl bash -c "ansible-playbook -i /root/ansible/inventory $playbookWSL --private-key /root/ansible/ansible_ssh_key -u adminuser -vvv" 2>&1
+
         $ansibleOutput | ForEach-Object { Write-Host $_ }
 
-        if ($ansibleOutput -match "failed=0") {
-          Write-Host "Playbook OK"
-        } else {
-          Write-Error "Playbook failed"
-          exit 1
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Ansible playbook execution failed with exit code $LASTEXITCODE"
+          exit $LASTEXITCODE
         }
+
       displayName: 'Prepare SSH Key, Install Galaxy Requirements, and Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
