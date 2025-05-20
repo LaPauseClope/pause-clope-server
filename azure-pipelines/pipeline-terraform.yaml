@@ -314,15 +314,22 @@ stages:
       displayName: 'Verify WSL and Ansible Setup'
 
     - powershell: |
-        # Convertir le chemin Windows en chemin WSL
-        $workDir = "$(System.DefaultWorkingDirectory)" -replace '\\', '/'
+        # Convertir le chemin Windows en chemin WSL correctement
+        $workDir = "$(System.DefaultWorkingDirectory)" -replace '^[A-Za-z]:', '' -replace '\\', '/'
         $wslPath = "/mnt/c$workDir"
         # Générer la clé SSH
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
         # Ajuster les permissions de la clé SSH dans WSL
         wsl bash -c "chmod 600 $wslPath/ansible_ssh_key"
+        # Construire les chemins pour Ansible en évitant les doubles slash
+        $inventoryPath = "$wslPath/$(ANSIBLE_ROOT)/inventory"
+        $playbookPath = "$wslPath/$(ANSIBLE_ROOT)/deploy.yml"
+        if ("$(ANSIBLE_ROOT)" -eq "") {
+          $inventoryPath = "$wslPath/inventory"
+          $playbookPath = "$wslPath/deploy.yml"
+        }
         # Exécuter Ansible via WSL
-        wsl bash -c "ansible-playbook -i $wslPath/$(ANSIBLE_ROOT)/inventory $wslPath/$(ANSIBLE_ROOT)/deploy.yml --private-key $wslPath/ansible_ssh_key -v"
+        wsl bash -c "ansible-playbook -i $inventoryPath $playbookPath --private-key $wslPath/ansible_ssh_key -v"
       displayName: 'Run Ansible Playbook'
       env:
         SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
