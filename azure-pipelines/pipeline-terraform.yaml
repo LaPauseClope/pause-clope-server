@@ -368,29 +368,27 @@ stages:
         $sshKeySrc = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
         $sshKeyDest = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
 
-        # === Copier la clé privée
+        # === Copier la clé privée (proprement)
         $privateKeyContent = Get-Content -Path $sshKeySrc -Raw
         Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
 
-        # === Chemin WSL vers la clé privée
+        # === Conversion du chemin Windows → WSL
         $drive = $sshKeyDest.Substring(0,1).ToLower()
         $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/').TrimStart('/')
         $wslKeyPath = "/mnt/$drive/$pathWithoutDrive"
 
-        # === Permissions de la clé dans WSL
+        # === Appliquer les bons droits
         Write-Host "Appliquer chmod 600 à $wslKeyPath"
         wsl bash -c "chmod 600 '$wslKeyPath'"
 
-        # === Commande SSH verbeuse
+        # === Test SSH + debug
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
         $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
-        wsl bash -c "$sshCmd" 2>&1 | Tee-Object -Variable sshOutput
+        $sshOutput = wsl bash -c "$sshCmd" 2>&1
 
-        # === Affichage complet du log SSH
         Write-Host "`n=== SSH DEBUG OUTPUT ==="
-        $sshOutput
+        Write-Output $sshOutput
         Write-Host "=== END SSH DEBUG OUTPUT ===`n"
-
 
         if ($LASTEXITCODE -ne 0) {
           Write-Error "SSH connection failed. Please verify the key or VM."
