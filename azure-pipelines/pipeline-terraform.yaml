@@ -269,42 +269,42 @@ stages:
       displayName: 'Publish Terraform Output'
 
 - stage: ConfigureWithAnsible
-    displayName: 'Configure with Ansible'
-    dependsOn: TerraformApply
-    condition: succeeded()
-    jobs:
-    - job: AnsibleConfigure
+  displayName: 'Configure with Ansible'
+  dependsOn: TerraformApply
+  condition: succeeded()
+  jobs:
+  - job: AnsibleConfigure
+    displayName: 'Run Ansible Playbook'
+    pool:
+      name: SelfHosted
+    steps:
+    - checkout: self  # Assure que tous les fichiers du dépôt sont téléchargés
+
+    - download: current
+      artifact: terraform-output
+      displayName: 'Download Terraform Output'
+
+    - powershell: |
+        $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
+        $inventoryPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "inventory"
+        if (Test-Path $inventoryPath) {
+          (Get-Content -Path $inventoryPath) -replace "ansible_host=.*", "ansible_host=$ip" | Set-Content -Path $inventoryPath
+          Write-Host "Inventory updated with IP: $ip"
+        } else {
+          Write-Error "Inventory file not found at $inventoryPath"
+        }
+      displayName: 'Update Ansible Inventory with Terraform Output'
+
+    - powershell: |
+        wsl --install -d Ubuntu-20.04 --set-default
+        wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
+      displayName: 'Install Ansible via WSL'
+
+    - powershell: |
+        echo $env:SSH_PRIVATE_KEY | Out-File -FilePath ansible_ssh_key
+        wsl bash -c "chmod 600 ansible_ssh_key"
+        wsl bash -c "ansible-playbook -i $(System.DefaultWorkingDirectory)/inventory deploy.yml --private-key ansible_ssh_key"
       displayName: 'Run Ansible Playbook'
-      pool:
-        name: SelfHosted
-      steps:
-      - checkout: self  # Assure que tous les fichiers du dépôt sont téléchargés
-
-      - download: current
-        artifact: terraform-output
-        displayName: 'Download Terraform Output'
-
-      - powershell: |
-          $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
-          $inventoryPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "inventory"
-          if (Test-Path $inventoryPath) {
-            (Get-Content -Path $inventoryPath) -replace "ansible_host=.*", "ansible_host=$ip" | Set-Content -Path $inventoryPath
-            Write-Host "Inventory updated with IP: $ip"
-          } else {
-            Write-Error "Inventory file not found at $inventoryPath"
-          }
-        displayName: 'Update Ansible Inventory with Terraform Output'
-
-      - powershell: |
-          wsl --install -d Ubuntu-20.04 --set-default
-          wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
-        displayName: 'Install Ansible via WSL'
-
-      - powershell: |
-          echo $env:SSH_PRIVATE_KEY | Out-File -FilePath ansible_ssh_key
-          wsl bash -c "chmod 600 ansible_ssh_key"
-          wsl bash -c "ansible-playbook -i $(System.DefaultWorkingDirectory)/inventory deploy.yml --private-key ansible_ssh_key"
-        displayName: 'Run Ansible Playbook'
-        env:
-          SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
-          ANSIBLE_HOST_KEY_CHECKING: False
+      env:
+        SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
+        ANSIBLE_HOST_KEY_CHECKING: False
