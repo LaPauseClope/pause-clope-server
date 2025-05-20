@@ -373,9 +373,10 @@ stages:
         $null = New-Item -Path $sshKeyDest -ItemType File -Force
         Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
 
-        # === Ajuster les permissions sous Windows
+        # === Ajuster les permissions sous Windows (utiliser un SID ou une approche simplifiée)
+        $currentUser = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
         icacls "$sshKeyDest" /inheritance:d
-        icacls "$sshKeyDest" /grant "$env:USERNAME":F
+        icacls "$sshKeyDest" /grant "$currentUser":F
         icacls "$sshKeyDest" /remove "Everyone"
         icacls "$sshKeyDest" /remove "Authenticated Users"
 
@@ -392,7 +393,8 @@ stages:
 
         # === Appliquer les permissions en WSL
         Write-Host "Appliquer chmod 600 à $wslKeyPath"
-        wsl bash -c "chmod 600 '$wslKeyPath'"
+        $chmodOutput = wsl bash -c "chmod 600 '$wslKeyPath' 2>&1"
+        Write-Host "chmod output: $chmodOutput"
 
         # === Vérifier les permissions
         Write-Host "Vérification des permissions de $wslKeyPath :"
