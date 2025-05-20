@@ -116,47 +116,40 @@ stages:
       artifact: terraform-ssh-key
 
     - powershell: |
-        # === Charger IP et clé
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
         $sshKeyRaw = Get-Content -Path "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt" -Raw
         $localKeyPath = "$env:USERPROFILE\ansible_ssh_key"
 
-        # === Écriture en ASCII pur
         [System.IO.File]::WriteAllText($localKeyPath, $sshKeyRaw, [System.Text.Encoding]::ASCII)
 
-        # === WSL : copie dans un dossier Linux
-        $wslDestDir = "/root/ansible"
-        $wslKeyPath = "$wslDestDir/ansible_ssh_key"
+        $wslKeyPath = "/root/ansible/ansible_ssh_key"
+        $wslInventoryPath = "/root/ansible/inventory"
 
-        wsl bash -c "mkdir -p $wslDestDir && cp /mnt/c/Users/fabio/ansible_ssh_key $wslKeyPath && chmod 600 $wslKeyPath"
+        wsl bash -c "mkdir -p /root/ansible"
+        wsl bash -c "cp /mnt/c/Users/fabio/ansible_ssh_key $wslKeyPath"
+        wsl bash -c "chmod 600 $wslKeyPath"
 
-        # === Générer inventory dynamique
         $inventoryContent = "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=$wslKeyPath"
-        $inventoryPath = "$(System.DefaultWorkingDirectory)\ansible_inventory"
-        Set-Content -Path $inventoryPath -Value $inventoryContent -Encoding ascii
+        Set-Content -Path "$(System.DefaultWorkingDirectory)\ansible_inventory" -Value $inventoryContent -Encoding ascii
 
-        $wslInventory = "/mnt/c" + $inventoryPath.Substring(2).Replace('\', '/')
-        $wslPlaybook = "/mnt/c" + "$(System.DefaultWorkingDirectory)\deploy.yml".Substring(2).Replace('\', '/')
+        $windowsInventory = "$(System.DefaultWorkingDirectory)\ansible_inventory"
+        $inventoryWSL = "/mnt/c" + $windowsInventory.Substring(2).Replace('\', '/')
+        wsl bash -c "cp '$inventoryWSL' '$wslInventoryPath'"
 
-        Write-Host "Testing SSH to $ip with $wslKeyPath..."
-        $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
+        Write-Host "=== INVENTORY CONTENT ==="
+        Get-Content -Path $windowsInventory | ForEach-Object { Write-Host $_ }
+        Write-Host "========================="
 
-        try {
-            $sshOutput = wsl bash -c "$sshCmd" 2>&1
-        } catch {
-            Write-Host "SSH command failed to execute"
-        }
+        Write-Host "Running ansible -m ping..."
+        $pingOutput = wsl bash -c "ansible -i $wslInventoryPath server -m ping -u adminuser --private-key $wslKeyPath -vvv"
+        $pingOutput | ForEach-Object { Write-Host $_ }
 
-        Write-Host "=== SSH DEBUG OUTPUT ==="
-        if ($sshOutput) {
-            $sshOutput | ForEach-Object { Write-Host $_ }
-        } else {
-            Write-Host "No output from SSH command (check encoding, permissions, or WSL access)"
-        }
-        Write-Host "=== END SSH DEBUG OUTPUT ==="
+        $playbookPath = "$(System.DefaultWorkingDirectory)\deploy.yml"
+        $playbookWSL = "/mnt/c" + $playbookPath.Substring(2).Replace('\', '/')
 
-        # === Run Ansible Playbook
-        wsl bash -c "ansible-playbook -i '$wslInventory' '$wslPlaybook' --private-key '$wslKeyPath' -u adminuser -vvv"
+        Write-Host "Running playbook..."
+        $ansibleOutput = wsl bash -c "ansible-playbook -i $wslInventoryPath $playbookWSL --private-key $wslKeyPath -u adminuser -vvv"
+        $ansibleOutput | ForEach-Object { Write-Host $_ }
       displayName: 'Prepare SSH Key, Test, and Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
