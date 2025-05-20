@@ -33,14 +33,13 @@
       become: yes
       become_user: adminuser
 
-    - name: Check docker-compose.yml exists
-      stat:
-        path: /home/adminuser/docker-compose.yml
-      register: compose_file
-
-    - name: Debug file presence
-      debug:
-        var: compose_file.stat.exists
+    - name: Copy Dockerfile
+      copy:
+        src: Dockerfile
+        dest: /home/adminuser/Dockerfile
+        owner: adminuser
+        group: adminuser
+        mode: '0644'
 
     - name: Start services
       command: docker-compose up -d
