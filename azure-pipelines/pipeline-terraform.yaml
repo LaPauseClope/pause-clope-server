@@ -144,6 +144,8 @@ variables:
 - group: LaPauseClope
 - name: TF_ROOT
   value: 'terraform'
+- name: ANSIBLE_ROOT
+  value: ''  # Ajustez à 'ansible' si les fichiers Ansible sont dans un dossier ansible/
 - name: ANSIBLE_PIPELINE_ID
   value: '13'
 
@@ -164,12 +166,7 @@ stages:
       displayName: 'Check Terraform Version'
 
     - powershell: |
-        terraform init `
-          -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
-          -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-          -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-          -backend-config="key=terraform.tfstate" `
-          -backend-config="access_key=$env:ARM_ACCESS_KEY"
+        terraform init -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" -backend-config="container_name=$env:ARM_CONTAINER_NAME" -backend-config="key=terraform.tfstate" -backend-config="access_key=$env:ARM_ACCESS_KEY"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Init'
       env:
@@ -187,7 +184,6 @@ stages:
         ARM_CLIENT_SECRET: $(ARM_AZURE_CLIENT_SECRET)
         ARM_SUBSCRIPTION_ID: $(ARM_AZURE_SUBSCRIPTION_ID)
         ARM_TENANT_ID: $(ARM_AZURE_TENANT_ID)
-
         TF_VAR_backend_rg_name: $(ARM_RESOURCE_GROUP_NAME)
         TF_VAR_backend_account_name: $(ARM_STORAGE_ACCOUNT_NAME)
         TF_VAR_backend_container_name: $(ARM_CONTAINER_NAME)
@@ -223,12 +219,7 @@ stages:
       displayName: 'Show downloaded artifact files'
 
     - powershell: |
-        terraform init `
-          -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" `
-          -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" `
-          -backend-config="container_name=$env:ARM_CONTAINER_NAME" `
-          -backend-config="key=terraform.tfstate" `
-          -backend-config="access_key=$env:ARM_ACCESS_KEY"
+        terraform init -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" -backend-config="container_name=$env:ARM_CONTAINER_NAME" -backend-config="key=terraform.tfstate" -backend-config="access_key=$env:ARM_ACCESS_KEY"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Init (Apply)'
       env:
@@ -243,12 +234,10 @@ stages:
       displayName: 'Terraform Apply'
       env:
         PIPELINE_WORKSPACE: $(Pipeline.Workspace)
-
         ARM_CLIENT_ID: $(ARM_AZURE_CLIENT_ID)
         ARM_CLIENT_SECRET: $(ARM_AZURE_CLIENT_SECRET)
         ARM_SUBSCRIPTION_ID: $(ARM_AZURE_SUBSCRIPTION_ID)
         ARM_TENANT_ID: $(ARM_AZURE_TENANT_ID)
-
         TF_VAR_backend_rg_name: $(ARM_RESOURCE_GROUP_NAME)
         TF_VAR_backend_account_name: $(ARM_STORAGE_ACCOUNT_NAME)
         TF_VAR_backend_container_name: $(ARM_CONTAINER_NAME)
@@ -278,7 +267,11 @@ stages:
     pool:
       name: SelfHosted
     steps:
-    - checkout: self  # Assure que tous les fichiers du dépôt sont téléchargés
+    - checkout: self
+
+    - powershell: |
+        Get-ChildItem -Recurse "$(System.DefaultWorkingDirectory)"
+      displayName: 'List files in working directory'
 
     - download: current
       artifact: terraform-output
@@ -286,24 +279,39 @@ stages:
 
     - powershell: |
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
-        $inventoryPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "inventory"
-        if (Test-Path $inventoryPath) {
+        $inventoryPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "$(ANSIBLE_ROOT)\inventory"
+        if (-not (Test-Path $inventoryPath)) {
+          Write-Host "Inventory file not found, creating it with default content."
+          Set-Content -Path $inventoryPath -Value "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=ansible_ssh_key"
+        } else {
           (Get-Content -Path $inventoryPath) -replace "ansible_host=.*", "ansible_host=$ip" | Set-Content -Path $inventoryPath
           Write-Host "Inventory updated with IP: $ip"
-        } else {
-          Write-Error "Inventory file not found at $inventoryPath"
         }
       displayName: 'Update Ansible Inventory with Terraform Output'
 
     - powershell: |
-        wsl --install -d Ubuntu-20.04 --set-default
-        wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
-      displayName: 'Install Ansible via WSL'
+        # Vérifier si Python est installé, sinon l'installer
+        if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+          Write-Host "Installing Python..."
+          Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.6/python-3.11.6-amd64.exe -OutFile python-installer.exe
+          Start-Process -Wait -FilePath python-installer.exe -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1"
+          Remove-Item python-installer.exe
+        }
+        # Rafraîchir le PATH
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        # Installer pip si nécessaire
+        python -m ensurepip --upgrade
+        python -m pip install --upgrade pip
+        # Installer Ansible et pywinrm
+        pip install ansible
+        pip install pywinrm
+      displayName: 'Install Python, Ansible, and pywinrm'
 
     - powershell: |
-        echo $env:SSH_PRIVATE_KEY | Out-File -FilePath ansible_ssh_key
-        wsl bash -c "chmod 600 ansible_ssh_key"
-        wsl bash -c "ansible-playbook -i $(System.DefaultWorkingDirectory)/inventory deploy.yml --private-key ansible_ssh_key"
+        echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /inheritance:r
+        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant:r "$env:USERNAME:F"
+        ansible-playbook -i "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory" "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml" --private-key "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
       displayName: 'Run Ansible Playbook'
       env:
         SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
