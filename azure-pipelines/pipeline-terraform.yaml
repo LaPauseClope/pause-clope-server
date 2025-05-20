@@ -387,8 +387,9 @@ stages:
         $sshOutput = wsl bash -c "$sshCmd" 2>&1
 
         Write-Host "`n=== SSH DEBUG OUTPUT ==="
-        Write-Output $sshOutput
+        $sshOutput | ForEach-Object { Write-Host $_ }
         Write-Host "=== END SSH DEBUG OUTPUT ===`n"
+
 
         if ($LASTEXITCODE -ne 0) {
           Write-Error "SSH connection failed. Please verify the key or VM."
