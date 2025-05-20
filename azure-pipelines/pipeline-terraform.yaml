@@ -140,6 +140,11 @@ stages:
         Get-Content -Path $windowsInventory | ForEach-Object { Write-Host $_ }
         Write-Host "========================="
 
+        Write-Host "Installing Ansible Galaxy collections..."
+        $requirementsPath = "$(System.DefaultWorkingDirectory)\requirements.yml"
+        $requirementsWSL = "/mnt/c" + $requirementsPath.Substring(2).Replace('\', '/')
+        wsl bash -c "ansible-galaxy collection install -r '$requirementsWSL'"
+
         Write-Host "Running ansible -m ping..."
         $pingOutput = wsl bash -c "ansible -i $wslInventoryPath server -m ping -u adminuser --private-key $wslKeyPath -vvv"
         $pingOutput | ForEach-Object { Write-Host $_ }
@@ -150,6 +155,6 @@ stages:
         Write-Host "Running playbook..."
         $ansibleOutput = wsl bash -c "ansible-playbook -i $wslInventoryPath $playbookWSL --private-key $wslKeyPath -u adminuser -vvv"
         $ansibleOutput | ForEach-Object { Write-Host $_ }
-      displayName: 'Prepare SSH Key, Test, and Run Ansible'
+      displayName: 'Prepare SSH Key, Install Galaxy Requirements, and Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False

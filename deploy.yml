@@ -78,8 +78,13 @@
         path: "{{ compose_dir }}/docker-compose.yml"
       register: compose_check
 
-    - name: Start services with Docker Compose plugin
-      shell: docker compose up -d
-      args:
-        chdir: "{{ compose_dir }}"
-      become_user: adminuser
+    - name: Ensure adminuser can use Docker
+      user:
+        name: adminuser
+        groups: docker
+        append: yes
+
+    - name: Start services with Docker Compose (community module)
+      community.docker.docker_compose:
+        project_src: /home/adminuser
+      become: yes
