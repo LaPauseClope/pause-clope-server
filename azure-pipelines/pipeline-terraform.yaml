@@ -256,7 +256,7 @@ stages:
 
     - powershell: |
         # Attendre que la VM soit prête
-        Start-Sleep -Seconds 120
+        Start-Sleep -Seconds 30
       displayName: 'Wait for VM to be ready'
 
     - publish: $(TF_ROOT)/ip.txt
@@ -339,34 +339,63 @@ stages:
       displayName: 'Verify WSL and Ansible Setup'
 
     - powershell: |
-        # Convertir le chemin Windows en chemin WSL correctement
-        $workDir = "$(System.DefaultWorkingDirectory)" -replace '^[A-Za-z]:', '' -replace '\\', '/'
-        $wslPath = "/mnt/c$workDir"
-        # Utiliser la clé privée générée par Terraform
-        $sshKeyPath = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
-        Get-Content -Path $sshKeyPath | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        # Ajuster les permissions de la clé SSH dans WSL
-        wsl bash -c "chmod 600 $wslPath/ansible_ssh_key"
-        # Construire les chemins pour Ansible en évitant les doubles slash
-        $inventoryPath = "$wslPath/$(ANSIBLE_ROOT)/inventory"
-        $playbookPath = "$wslPath/$(ANSIBLE_ROOT)/deploy.yml"
-        if ("$(ANSIBLE_ROOT)" -eq "") {
-          $inventoryPath = "$wslPath/inventory"
-          $playbookPath = "$wslPath/deploy.yml"
-        }
-        # Débogage des chemins
-        Write-Host "Inventory Path: $inventoryPath"
-        Write-Host "Playbook Path: $playbookPath"
-        # Tester la connexion SSH avant d'exécuter le playbook
+        # Lire l'adresse IP publique de la VM
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
-        Write-Host "Testing SSH connectivity to $ip..."
-        wsl bash -c "ssh -i $wslPath/ansible_ssh_key -o StrictHostKeyChecking=no adminuser@$ip 'echo Connection successful'" 2>&1 | Write-Host
+
+        # Copier la clé privée dans le workspace
+        $keySrc = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
+        $keyDest = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        Get-Content -Path $keySrc | Out-File -FilePath $keyDest -Encoding ascii -Force
+
+        # Créer le chemin WSL (/mnt/c/...) vers la clé privée
+        $drive = $keyDest.Substring(0,1).ToLower()
+        $wslKeyPath = "/mnt/$drive" + $keyDest.Substring(2).Replace('\', '/')
+
+        # Appliquer les permissions en WSL
+        wsl bash -c "chmod 600 '$wslKeyPath'"
+
+        # Créer le fichier inventory dans le workspace
+        $inventoryPath = "$(System.DefaultWorkingDirectory)\inventory"
+        "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=$wslKeyPath" | Out-File -FilePath $inventoryPath -Encoding ascii -Force
+
+        Write-Host "Generated inventory:"
+        Get-Content -Path $inventoryPath
+      displayName: '🛠️ Générer inventory dynamique avec IP + clé privée WSL'
+
+    - powershell: |
+        # Récupération IP + Clé privée
+        $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
+        $sshKeyPath = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
+
+        # Copie la clé dans le workspace pour que WSL y accède
+        $destKeyPath = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        Get-Content -Path $sshKeyPath | Out-File -FilePath $destKeyPath -Encoding ascii -Force
+
+        # Convertir le chemin pour WSL (/mnt/c/...)
+        $driveLetter = $destKeyPath.Substring(0,1).ToLower()
+        $wslKeyPath = "/mnt/$driveLetter" + $destKeyPath.Substring(2).Replace('\','/')
+
+        # Appliquer les bons droits via WSL
+        wsl bash -c "chmod 600 '$wslKeyPath'"
+
+        # Test SSH
+        Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
+        wsl bash -c "ssh -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo Connection successful'" 2>&1 | Write-Host
+
         if ($LASTEXITCODE -ne 0) {
-          Write-Host "ERROR: SSH connection failed. Please verify the SSH key and VM configuration."
+          Write-Error "SSH connection failed. Please verify the key or VM."
           exit 1
         }
-        # Exécuter Ansible avec plus de verbosité
-        wsl bash -c "ansible-playbook -i $inventoryPath $playbookPath --private-key $wslPath/ansible_ssh_key -vvv"
-      displayName: 'Run Ansible Playbook'
+
+        # Run Ansible
+        $inventoryPath = "$(System.DefaultWorkingDirectory)/inventory"
+        $playbookPath = "$(System.DefaultWorkingDirectory)/deploy.yml"
+
+        # Convert paths
+        $wslInventory = $inventoryPath -replace '^[A-Za-z]:', '/mnt/c' -replace '\\', '/'
+        $wslPlaybook  = $playbookPath -replace '^[A-Za-z]:', '/mnt/c' -replace '\\', '/'
+
+        wsl bash -c "ansible-playbook -i '$wslInventory' '$wslPlaybook' --private-key '$wslKeyPath' -u adminuser -vvv"
+      displayName: 'Test SSH + Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
