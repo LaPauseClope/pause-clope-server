@@ -147,7 +147,7 @@ stages:
 
         Write-Host "Running ansible -m ping..."
         wsl bash -c "echo '=== /root/ansible/inventory (dans WSL) ===' && cat $wslInventoryPath && echo '========================================'"
-        $pingOutput = wsl bash -c "ansible -i $wslInventoryPath server -m ping -u adminuser --private-key $wslKeyPath -vvvv"
+        $pingOutput = wsl bash -c "ansible -i $wslInventoryPath all -m ping -u adminuser --private-key $wslKeyPath -vvv 2>&1"
         $pingOutput | ForEach-Object { Write-Host $_ }
 
         $playbookPath = "$(System.DefaultWorkingDirectory)\deploy.yml"
