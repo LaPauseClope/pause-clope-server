@@ -370,7 +370,11 @@ stages:
 
         # === Copier la clé privée (proprement)
         $privateKeyContent = Get-Content -Path $sshKeySrc -Raw
+        $null = New-Item -Path $sshKeyDest -ItemType File -Force
         Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
+        # Changer les permissions en WSL
+        wsl bash -c "chmod 600 '$wslKeyPath'"
+
 
         # === Conversion du chemin Windows → WSL
         $drive = $sshKeyDest.Substring(0,1).ToLower()
