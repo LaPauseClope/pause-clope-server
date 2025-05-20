@@ -1,5 +1,17 @@
 - hosts: server
   tasks:
+
+    - name: Configure Ubuntu server
+      hosts: server
+      become: yes
+      tasks:
+        - name: Install Python (required for Ansible)
+          raw: sudo apt-get update && sudo apt-get install -y python3
+          changed_when: false
+
+    - name: Gather facts after installing Python
+      setup:
+
     - name: Install Docker
       apt:
         name: docker.io
