@@ -372,23 +372,36 @@ stages:
         $privateKeyContent = Get-Content -Path $sshKeySrc -Raw
         $null = New-Item -Path $sshKeyDest -ItemType File -Force
         Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
-        # Changer les permissions en WSL
-        wsl bash -c "chmod 600 '$wslKeyPath'"
-
 
         # === Conversion du chemin Windows → WSL
         $drive = $sshKeyDest.Substring(0,1).ToLower()
         $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/').TrimStart('/')
         $wslKeyPath = "/mnt/$drive/$pathWithoutDrive"
 
+        # === Vérifier que le fichier existe
+        if (-not (Test-Path $sshKeyDest)) {
+          Write-Error "SSH key file not found at $sshKeyDest"
+          exit 1
+        }
+
         # === Appliquer les bons droits
         Write-Host "Appliquer chmod 600 à $wslKeyPath"
         wsl bash -c "chmod 600 '$wslKeyPath'"
 
+        # === Vérifier les permissions
+        Write-Host "Vérification des permissions de $wslKeyPath :"
+        wsl bash -c "ls -l '$wslKeyPath'"
+
         # === Test SSH
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
         $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
-        $sshOutput = wsl bash -c "$sshCmd" 2>&1
+        try {
+          $sshOutput = wsl bash -c "$sshCmd" 2>&1
+          $exitCode = $LASTEXITCODE
+        } catch {
+          $exitCode = 1
+          $sshOutput = $_.Exception.Message
+        }
 
         Write-Host ""
         Write-Host "=== SSH DEBUG OUTPUT ==="
@@ -397,12 +410,12 @@ stages:
         }
         Write-Host "=== END SSH DEBUG OUTPUT ==="
 
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "SSH connection failed. Please verify the key or VM."
+        if ($exitCode -ne 0) {
+          Write-Error "SSH connection failed. Exit code: $exitCode. Please verify the key or VM."
           exit 1
         }
 
-        # Run Ansible
+        # === Run Ansible
         $inventoryPath = "$(System.DefaultWorkingDirectory)/inventory"
         $playbookPath = "$(System.DefaultWorkingDirectory)/deploy.yml"
 
@@ -410,7 +423,12 @@ stages:
         $wslInventory = $inventoryPath -replace '^[A-Za-z]:', '/mnt/c' -replace '\\', '/'
         $wslPlaybook  = $playbookPath -replace '^[A-Za-z]:', '/mnt/c' -replace '\\', '/'
 
+        Write-Host "Running Ansible playbook..."
         wsl bash -c "ansible-playbook -i '$wslInventory' '$wslPlaybook' --private-key '$wslKeyPath' -u adminuser -vvv"
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "Ansible playbook execution failed."
+          exit 1
+        }
       displayName: 'Test SSH + Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
