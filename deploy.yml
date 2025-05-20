@@ -14,11 +14,15 @@
         version: "{{ repo_branch }}"
       become_user: adminuser
 
-- name: Build the JAR with Maven
-  command: ./mvnw clean package -DskipTests
-  args:
-    chdir: /home/adminuser/app
-  become_user: adminuser
+- name: Build app with Maven
+  hosts: server
+  become: yes
+  tasks:
+    - name: Build the JAR with Maven
+      ansible.builtin.command: ./mvnw clean package -DskipTests
+      args:
+        chdir: /home/adminuser/app
+      become_user: adminuser
 
 - name: Install required Ansible collections
   hosts: localhost
