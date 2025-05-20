@@ -290,29 +290,39 @@ stages:
       displayName: 'Update Ansible Inventory with Terraform Output'
 
     - powershell: |
-        # Vérifier si Python est installé, sinon l'installer
-        if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-          Write-Host "Installing Python..."
-          Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.6/python-3.11.6-amd64.exe -OutFile python-installer.exe
-          Start-Process -Wait -FilePath python-installer.exe -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1"
-          Remove-Item python-installer.exe
+        # Vérifier si WSL est fonctionnel
+        Write-Host "Checking WSL status..."
+        wsl --list --verbose
+        # Vérifier si openssh-client est installé (nécessaire pour Ansible)
+        $sshInstalled = wsl bash -c "command -v ssh" | Out-String
+        if ($sshInstalled -eq "") {
+          Write-Host "ERROR: openssh-client not found in WSL. Please install it manually using 'sudo apt-get install openssh-client'."
+          exit 1
+        } else {
+          Write-Host "openssh-client found in WSL: $sshInstalled"
         }
-        # Rafraîchir le PATH pour inclure Python
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        # Installer pip si nécessaire
-        python -m ensurepip --upgrade
-        python -m pip install --upgrade pip
-        # Installer Ansible
-        pip install ansible
-      displayName: 'Install Python and Ansible'
+        # Vérifier si Ansible est installé dans WSL
+        $ansibleInstalled = wsl bash -c "command -v ansible" | Out-String
+        if ($ansibleInstalled -eq "") {
+          Write-Host "ERROR: Ansible not found in WSL. Please install it manually using 'sudo apt-get install ansible'."
+          exit 1
+        } else {
+          Write-Host "Ansible found in WSL: $ansibleInstalled"
+        }
+        # Afficher la version d'Ansible
+        wsl bash -c "ansible --version"
+      displayName: 'Verify WSL and Ansible Setup'
 
     - powershell: |
+        # Convertir le chemin Windows en chemin WSL
+        $workDir = "$(System.DefaultWorkingDirectory)" -replace '\\', '/'
+        $wslPath = "/mnt/c$workDir"
+        # Générer la clé SSH
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        # Ajuster les permissions de la clé (Windows n'a pas chmod, mais on peut restreindre l'accès)
-        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /inheritance:r
-        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant:r "$env:USERNAME:F"
-        # Exécuter Ansible
-        ansible-playbook -i "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory" "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml" --private-key "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        # Ajuster les permissions de la clé SSH dans WSL
+        wsl bash -c "chmod 600 $wslPath/ansible_ssh_key"
+        # Exécuter Ansible via WSL
+        wsl bash -c "ansible-playbook -i $wslPath/$(ANSIBLE_ROOT)/inventory $wslPath/$(ANSIBLE_ROOT)/deploy.yml --private-key $wslPath/ansible_ssh_key -v"
       displayName: 'Run Ansible Playbook'
       env:
         SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
