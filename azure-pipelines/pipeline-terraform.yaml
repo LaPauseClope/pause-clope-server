@@ -183,7 +183,6 @@ stages:
         TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
         TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
 
-
     - publish: $(TF_ROOT)/tfplan
       artifact: tfplan
 
@@ -209,7 +208,7 @@ stages:
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Init (Apply)'
 
-    - powershell: terraform apply -auto-approve tfplan
+    - powershell: terraform apply -auto-approve "$env:PIPELINE_WORKSPACE\tfplan\tfplan"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Apply'
       env:
