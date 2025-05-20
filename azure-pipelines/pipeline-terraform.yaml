@@ -146,9 +146,16 @@ stages:
         wsl bash -c "ansible-galaxy collection install -r '$requirementsWSL'"
 
         Write-Host "Running ansible -m ping..."
-        wsl bash -c "echo '=== /root/ansible/inventory (dans WSL) ===' && cat $wslInventoryPath && echo '========================================'"
-        $pingOutput = wsl bash -c "ansible -i $wslInventoryPath all -m ping -u adminuser --private-key $wslKeyPath -vvv 2>&1"
-        $pingOutput | ForEach-Object { Write-Host $_ }
+        $pingResult = wsl bash -c "ansible -i $wslInventoryPath all -m ping -u adminuser --private-key $wslKeyPath -vvv 2>&1"
+        $pingResult | ForEach-Object { Write-Host $_ }
+
+        Write-Host "=== Ping result analysis ==="
+        if ($pingResult -match '"ping": "pong"') {
+            Write-Host "Ansible ping succeeded"
+        } else {
+            Write-Host "Ansible ping failed — see logs above"
+            exit 1
+        }
 
         $playbookPath = "$(System.DefaultWorkingDirectory)\deploy.yml"
         $playbookWSL = "/mnt/c" + $playbookPath.Substring(2).Replace('\', '/')
