@@ -124,17 +124,14 @@ stages:
         TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
 
     - powershell: |
-        Write-Host "Récupération de la clé privée générée par Terraform..."
+        Write-Host "📥 Export de la clé SSH privée générée par Terraform..."
+
         $privateKey = terraform output -raw ssh_private_key
 
         $keyPath = "$(System.DefaultWorkingDirectory)\id_rsa"
         $privateKey | Out-File -Encoding ascii -FilePath $keyPath -Force
 
-        Write-Host "Application des permissions strictes sur la clé..."
-        $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-        $account = $identity.Name
-        icacls $keyPath /inheritance:r /grant "$account:F"
-
-        Write-Host "Clé SSH disponible à : $keyPath"
+        Write-Host "✅ Clé SSH écrite dans : $keyPath"
+        Write-Host "ℹ️ Pas de permissions modifiées (icacls désactivé)"
       workingDirectory: $(TF_ROOT)
-      displayName: 'Export & Secure SSH Private Key (Windows)'
+      displayName: 'Export SSH Private Key (sans icacls)'
