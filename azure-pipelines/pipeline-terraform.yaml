@@ -144,60 +144,40 @@ variables:
 - group: LaPauseClope
 - name: TF_ROOT
   value: 'terraform'
-- name: ANSIBLE_ROOT
-  value: '' 
 - name: ANSIBLE_PIPELINE_ID
   value: '13'
 
 stages:
 
+# === Terraform Plan ===
 - stage: TerraformPlan
   displayName: 'Terraform Plan'
   jobs:
   - job: Plan
     displayName: 'Run Terraform Plan'
-    pool:
-      name: SelfHosted
     steps:
     - checkout: self
 
-    - powershell: |
-        terraform -version
+    - powershell: terraform -version
       displayName: 'Check Terraform Version'
 
     - powershell: |
-        terraform init -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" -backend-config="container_name=$env:ARM_CONTAINER_NAME" -backend-config="key=terraform.tfstate" -backend-config="access_key=$env:ARM_ACCESS_KEY"
+        terraform init -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" `
+                      -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" `
+                      -backend-config="container_name=$(ARM_CONTAINER_NAME)" `
+                      -backend-config="key=terraform.tfstate" `
+                      -backend-config="access_key=$(ARM_ACCESS_KEY)"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Init'
-      env:
-        ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
-        ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
-        ARM_CONTAINER_NAME: $(ARM_CONTAINER_NAME)
-        ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
 
-    - powershell: |
-        terraform plan -out=tfplan
+    - powershell: terraform plan -out=tfplan
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Plan'
-      env:
-        ARM_CLIENT_ID: $(ARM_AZURE_CLIENT_ID)
-        ARM_CLIENT_SECRET: $(ARM_AZURE_CLIENT_SECRET)
-        ARM_SUBSCRIPTION_ID: $(ARM_AZURE_SUBSCRIPTION_ID)
-        ARM_TENANT_ID: $(ARM_AZURE_TENANT_ID)
-        TF_VAR_backend_rg_name: $(ARM_RESOURCE_GROUP_NAME)
-        TF_VAR_backend_account_name: $(ARM_STORAGE_ACCOUNT_NAME)
-        TF_VAR_backend_container_name: $(ARM_CONTAINER_NAME)
-        TF_VAR_backend_access_key: $(ARM_ACCESS_KEY)
-        TF_VAR_admin_password: $(ARM_VM_PASSWORD)
-        TF_VAR_subscription_id: $(ARM_AZURE_SUBSCRIPTION_ID)
-        TF_VAR_client_id: $(ARM_AZURE_CLIENT_ID)
-        TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
-        TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
 
     - publish: $(TF_ROOT)/tfplan
       artifact: tfplan
-      displayName: 'Publish tfplan artifact'
 
+# === Terraform Apply ===
 - stage: TerraformApply
   displayName: 'Terraform Apply'
   dependsOn: TerraformPlan
@@ -205,48 +185,24 @@ stages:
   jobs:
   - job: Apply
     displayName: 'Run Terraform Apply'
-    pool:
-      name: SelfHosted
     steps:
     - checkout: self
 
     - download: current
       artifact: tfplan
-      displayName: 'Download tfplan artifact'
 
     - powershell: |
-        Get-ChildItem -Recurse $env:PIPELINE_WORKSPACE
-      displayName: 'Show downloaded artifact files'
-
-    - powershell: |
-        terraform init -backend-config="resource_group_name=$env:ARM_RESOURCE_GROUP_NAME" -backend-config="storage_account_name=$env:ARM_STORAGE_ACCOUNT_NAME" -backend-config="container_name=$env:ARM_CONTAINER_NAME" -backend-config="key=terraform.tfstate" -backend-config="access_key=$env:ARM_ACCESS_KEY"
+        terraform init -backend-config="resource_group_name=$(ARM_RESOURCE_GROUP_NAME)" `
+                      -backend-config="storage_account_name=$(ARM_STORAGE_ACCOUNT_NAME)" `
+                      -backend-config="container_name=$(ARM_CONTAINER_NAME)" `
+                      -backend-config="key=terraform.tfstate" `
+                      -backend-config="access_key=$(ARM_ACCESS_KEY)"
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Init (Apply)'
-      env:
-        ARM_RESOURCE_GROUP_NAME: $(ARM_RESOURCE_GROUP_NAME)
-        ARM_STORAGE_ACCOUNT_NAME: $(ARM_STORAGE_ACCOUNT_NAME)
-        ARM_CONTAINER_NAME: $(ARM_CONTAINER_NAME)
-        ARM_ACCESS_KEY: $(ARM_ACCESS_KEY)
 
-    - powershell: |
-        terraform apply -auto-approve "$env:PIPELINE_WORKSPACE\tfplan\tfplan"
+    - powershell: terraform apply -auto-approve tfplan
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Apply'
-      env:
-        PIPELINE_WORKSPACE: $(Pipeline.Workspace)
-        ARM_CLIENT_ID: $(ARM_AZURE_CLIENT_ID)
-        ARM_CLIENT_SECRET: $(ARM_AZURE_CLIENT_SECRET)
-        ARM_SUBSCRIPTION_ID: $(ARM_AZURE_SUBSCRIPTION_ID)
-        ARM_TENANT_ID: $(ARM_AZURE_TENANT_ID)
-        TF_VAR_backend_rg_name: $(ARM_RESOURCE_GROUP_NAME)
-        TF_VAR_backend_account_name: $(ARM_STORAGE_ACCOUNT_NAME)
-        TF_VAR_backend_container_name: $(ARM_CONTAINER_NAME)
-        TF_VAR_backend_access_key: $(ARM_ACCESS_KEY)
-        TF_VAR_admin_password: $(ARM_VM_PASSWORD)
-        TF_VAR_subscription_id: $(ARM_AZURE_SUBSCRIPTION_ID)
-        TF_VAR_client_id: $(ARM_AZURE_CLIENT_ID)
-        TF_VAR_client_secret: $(ARM_AZURE_CLIENT_SECRET)
-        TF_VAR_tenant_id: $(ARM_AZURE_TENANT_ID)
 
     - powershell: |
         terraform output -raw vm_public_ip > ip.txt
@@ -254,19 +210,13 @@ stages:
       workingDirectory: $(TF_ROOT)
       displayName: 'Extract Terraform Outputs'
 
-    - powershell: |
-        # Attendre que la VM soit prête
-        Start-Sleep -Seconds 30
-      displayName: 'Wait for VM to be ready'
-
     - publish: $(TF_ROOT)/ip.txt
       artifact: terraform-output
-      displayName: 'Publish Terraform Output - IP'
 
     - publish: $(TF_ROOT)/ssh_private_key.txt
       artifact: terraform-ssh-key
-      displayName: 'Publish Terraform Output - SSH Key'
 
+# === Ansible + SSH ===
 - stage: ConfigureWithAnsible
   displayName: 'Configure with Ansible'
   dependsOn: TerraformApply
@@ -274,153 +224,49 @@ stages:
   jobs:
   - job: AnsibleConfigure
     displayName: 'Run Ansible Playbook'
-    pool:
-      name: SelfHosted
     steps:
     - checkout: self
 
-    - powershell: |
-        Get-ChildItem -Recurse "$(System.DefaultWorkingDirectory)"
-      displayName: 'List files in working directory'
-
     - download: current
       artifact: terraform-output
-      displayName: 'Download Terraform Output - IP'
 
     - download: current
       artifact: terraform-ssh-key
-      displayName: 'Download Terraform Output - SSH Key'
 
     - powershell: |
+        # === Charger IP et clé
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
-        $inventoryPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "$(ANSIBLE_ROOT)\inventory"
-        if (-not (Test-Path $inventoryPath)) {
-          Write-Host "Inventory file not found, creating it with default content."
-          Set-Content -Path $inventoryPath -Value "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=ansible_ssh_key"
-        } else {
-          (Get-Content -Path $inventoryPath) -replace "ansible_host=.*", "ansible_host=$ip" | Set-Content -Path $inventoryPath
-          Write-Host "Inventory updated with IP: $ip"
-        }
-        # Vérifier la présence et la validité de deploy.yml
-        $playbookPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "$(ANSIBLE_ROOT)\deploy.yml"
-        if (-not (Test-Path $playbookPath)) {
-          Write-Host "ERROR: Playbook file 'deploy.yml' not found at $playbookPath. Please ensure it exists in the repository."
-          exit 1
-        } else {
-          Write-Host "Playbook found at $playbookPath"
-          $playbookContent = Get-Content -Path $playbookPath -Raw
-          Write-Host "Playbook content preview: $playbookContent.Substring(0, [Math]::Min(100, $playbookContent.Length))"
-        }
-      displayName: 'Update Ansible Inventory with Terraform Output'
+        $sshKeyRaw = Get-Content -Path "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt" -Raw
+        $localKeyPath = "$env:USERPROFILE\ansible_ssh_key"
 
-    - powershell: |
-        # Vérifier si WSL est fonctionnel et démarrer la distribution
-        Write-Host "Checking WSL status and starting distribution..."
-        wsl --list --verbose
-        wsl -d Ubuntu
-        # Vérifier si openssh-client est installé (nécessaire pour Ansible)
-        $sshInstalled = wsl bash -c "command -v ssh" | Out-String
-        if ($sshInstalled -eq "") {
-          Write-Host "ERROR: openssh-client not found in WSL. Please install it manually using 'sudo apt-get install openssh-client'."
-          exit 1
-        } else {
-          Write-Host "openssh-client found in WSL: $sshInstalled"
-        }
-        # Vérifier si Ansible est installé dans WSL
-        $ansibleInstalled = wsl bash -c "command -v ansible" | Out-String
-        if ($ansibleInstalled -eq "") {
-          Write-Host "ERROR: Ansible not found in WSL. Please install it manually using 'sudo apt-get install ansible'."
-          exit 1
-        } else {
-          Write-Host "Ansible found in WSL: $ansibleInstalled"
-        }
-        # Afficher la version d'Ansible
-        wsl bash -c "ansible --version"
-      displayName: 'Verify WSL and Ansible Setup'
+        # === Écriture en ASCII pur
+        [System.IO.File]::WriteAllText($localKeyPath, $sshKeyRaw, [System.Text.Encoding]::ASCII)
 
-    - powershell: |
-        # Lire l'adresse IP publique de la VM
-        $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
+        # === WSL : copie dans un dossier Linux
+        $wslDestDir = "/root/ansible"
+        $wslKeyPath = "$wslDestDir/ansible_ssh_key"
 
-        # Copier la clé privée dans le workspace avec permissions restreintes
-        $keySrc = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
-        $keyDest = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        $acl = Get-Acl (New-Item -Path $keyDest -ItemType File -Force)
-        $acl.SetAccessRuleProtection($true, $false) # Désactiver l'héritage
-        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule("Users", "FullControl", "Allow")
-        $acl.RemoveAccessRule($rule)
-        $rule = New-Object System.Security.AccessControl.FileSystemAccessRule([System.Security.Principal.WindowsIdentity]::GetCurrent().Name, "FullControl", "Allow")
-        $acl.AddAccessRule($rule)
-        Set-Acl -Path $keyDest -AclObject $acl
-        Set-Content -Path $keyDest -Value (Get-Content -Path $keySrc -Raw) -Encoding ascii
+        wsl bash -c "mkdir -p $wslDestDir && cp /mnt/c/Users/fabio/ansible_ssh_key $wslKeyPath && chmod 600 $wslKeyPath"
 
-        # Créer le chemin WSL (/mnt/c/...) vers la clé privée
-        $drive = $keyDest.Substring(0,1).ToLower()
-        $wslKeyPath = "/mnt/$drive" + $keyDest.Substring(2).Replace('\', '/')
+        # === Générer inventory dynamique
+        $inventoryContent = "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=$wslKeyPath"
+        $inventoryPath = "$(System.DefaultWorkingDirectory)\ansible_inventory"
+        Set-Content -Path $inventoryPath -Value $inventoryContent -Encoding ascii
 
-        # Appliquer les permissions en WSL
-        Write-Host "Appliquer chmod 600 à $wslKeyPath"
-        $chmodOutput = wsl bash -c "chmod 600 '$wslKeyPath' 2>&1"
-        Write-Host "chmod output: $chmodOutput"
-
-        # Vérifier les permissions
-        Write-Host "Vérification des permissions de $wslKeyPath :"
-        $permCheck = wsl bash -c "ls -l '$wslKeyPath'"
-        Write-Host $permCheck
-
-        # Créer le fichier inventory dans le workspace
-        $inventoryPath = "$(System.DefaultWorkingDirectory)\inventory"
-        "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=$wslKeyPath" | Out-File -FilePath $inventoryPath -Encoding ascii -Force
-
-        Write-Host "Generated inventory:"
-        Get-Content -Path $inventoryPath
-      displayName: 'Générer inventory dynamique avec IP + clé privée WSL'
-
-    - powershell: |
-        # === Lire IP et clé
-        $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
-        $sshKeyDest = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-
-        # === Conversion du chemin Windows → WSL
-        $drive = $sshKeyDest.Substring(0,1).ToLower()
-        $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/').TrimStart('/')
-        $wslKeyPath = "/mnt/$drive/$pathWithoutDrive"
-
-        # === Vérifier que le fichier existe
-        if (-not (Test-Path $sshKeyDest)) {
-          Write-Error "SSH key file not found at $sshKeyDest"
-          exit 1
-        }
-
-        # === Appliquer les permissions en WSL
-        Write-Host "Appliquer chmod 600 à $wslKeyPath"
-        $chmodOutput = wsl bash -c "chmod 600 '$wslKeyPath' 2>&1"
-        Write-Host "chmod output: $chmodOutput"
-
-        # === Vérifier les permissions
-        Write-Host "Vérification des permissions de $wslKeyPath :"
-        $permCheck = wsl bash -c "ls -l '$wslKeyPath'"
-        Write-Host $permCheck
+        $wslInventory = "/mnt/c" + $inventoryPath.Substring(2).Replace('\', '/')
+        $wslPlaybook = "/mnt/c" + "$(System.DefaultWorkingDirectory)\deploy.yml".Substring(2).Replace('\', '/')
 
         # === Test SSH
-        Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
+        Write-Host "Testing SSH to $ip with $wslKeyPath..."
         $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
-        try {
-          $sshOutput = wsl bash -c "$sshCmd" 2>&1
-          $exitCode = $LASTEXITCODE
-        } catch {
-          $exitCode = 1
-          $sshOutput = $_.Exception.Message
-        }
+        $sshOutput = wsl bash -c "$sshCmd" 2>&1
 
-        Write-Host ""
         Write-Host "=== SSH DEBUG OUTPUT ==="
-        foreach ($line in $sshOutput) {
-            Write-Host $line
-        }
+        $sshOutput | ForEach-Object { Write-Host $_ }
         Write-Host "=== END SSH DEBUG OUTPUT ==="
-        Write-Host "SSH Exit Code: $exitCode"
 
-        if ($exitCode -ne 0) {
-          Write-Error "SSH connection failed. Exit code: $exitCode. Please verify the key or VM."
-          exit
+        # === Run Ansible Playbook
+        wsl bash -c "ansible-playbook -i '$wslInventory' '$wslPlaybook' --private-key '$wslKeyPath' -u adminuser -vvv"
+      displayName: 'Prepare SSH Key, Test, and Run Ansible'
+      env:
+        ANSIBLE_HOST_KEY_CHECKING: False
