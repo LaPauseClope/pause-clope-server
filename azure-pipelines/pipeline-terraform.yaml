@@ -141,7 +141,7 @@ stages:
         Write-Host "========================="
 
         Write-Host "Installing Ansible Galaxy collections..."
-        wsl bash -c "ansible-galaxy collection install -r /root/ansible/requirements.yml || true"
+        wsl bash -c "[[ -f /root/ansible/requirements.yml ]] && ansible-galaxy collection install -r /root/ansible/requirements.yml || echo 'No requirements.yml file found, skipping...'"
 
         Write-Host "Running ansible -m ping..."
         $pingResult = wsl bash -c "ansible -i $wslInventoryPath all -m ping -u adminuser --private-key $wslKeyPath -vvv 2>&1"
