@@ -305,13 +305,20 @@ stages:
         # Installer Ansible et pywinrm
         pip install ansible
         pip install pywinrm
+        # Vérifier les versions
+        python --version
+        ansible --version
       displayName: 'Install Python, Ansible, and pywinrm'
 
     - powershell: |
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
         icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /inheritance:r
-        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant:r "$env:USERNAME:F"
-        ansible-playbook -i "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory" "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml" --private-key "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant "$env:USERNAME:(F)"
+        # Exécuter Ansible avec débogage
+        Write-Host "Running ansible-playbook with inventory: $(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory"
+        Write-Host "Playbook: $(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml"
+        Write-Host "Private key: $(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        ansible-playbook -i "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory" "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml" --private-key "$(System.DefaultWorkingDirectory)\ansible_ssh_key" -v
       displayName: 'Run Ansible Playbook'
       env:
         SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
