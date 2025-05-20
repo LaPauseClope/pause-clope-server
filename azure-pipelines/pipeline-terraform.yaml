@@ -145,7 +145,7 @@ variables:
 - name: TF_ROOT
   value: 'terraform'
 - name: ANSIBLE_ROOT
-  value: ''  # Ajustez à 'ansible' si deploy.yml est dans un dossier 'ansible'
+  value: '' 
 - name: ANSIBLE_PIPELINE_ID
   value: '13'
 
@@ -373,6 +373,12 @@ stages:
         $null = New-Item -Path $sshKeyDest -ItemType File -Force
         Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
 
+        # === Ajuster les permissions sous Windows
+        icacls "$sshKeyDest" /inheritance:d
+        icacls "$sshKeyDest" /grant:r "$env:USERNAME:F"
+        icacls "$sshKeyDest" /remove "Everyone"
+        icacls "$sshKeyDest" /remove "Authenticated Users"
+
         # === Conversion du chemin Windows → WSL
         $drive = $sshKeyDest.Substring(0,1).ToLower()
         $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/').TrimStart('/')
@@ -384,13 +390,14 @@ stages:
           exit 1
         }
 
-        # === Appliquer les bons droits
+        # === Appliquer les permissions en WSL
         Write-Host "Appliquer chmod 600 à $wslKeyPath"
         wsl bash -c "chmod 600 '$wslKeyPath'"
 
         # === Vérifier les permissions
         Write-Host "Vérification des permissions de $wslKeyPath :"
-        wsl bash -c "ls -l '$wslKeyPath'"
+        $permCheck = wsl bash -c "ls -l '$wslKeyPath'"
+        Write-Host $permCheck
 
         # === Test SSH
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
@@ -409,6 +416,7 @@ stages:
             Write-Host $line
         }
         Write-Host "=== END SSH DEBUG OUTPUT ==="
+        Write-Host "SSH Exit Code: $exitCode"
 
         if ($exitCode -ne 0) {
           Write-Error "SSH connection failed. Exit code: $exitCode. Please verify the key or VM."
