@@ -380,7 +380,9 @@ stages:
 
         # Test SSH
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
-        wsl bash -c "ssh -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo Connection successful'" 2>&1 | Write-Host
+        wsl bash -c "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'" 2>&1 | Tee-Object -Variable sshOutput
+        Write-Host $sshOutput
+
 
         if ($LASTEXITCODE -ne 0) {
           Write-Error "SSH connection failed. Please verify the key or VM."
