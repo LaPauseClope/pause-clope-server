@@ -131,7 +131,8 @@ stages:
         $privateKey | Out-File -Encoding ascii -FilePath $keyPath -Force
 
         Write-Host "Application des permissions strictes sur la clé..."
-        icacls $keyPath /inheritance:r /grant:r "$env:USERNAME:F"
+        i$account = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+        icacls $keyPath /inheritance:r /grant:r "$account:F"
 
         Write-Host "Clé SSH disponible à : $keyPath"
       workingDirectory: $(TF_ROOT)
