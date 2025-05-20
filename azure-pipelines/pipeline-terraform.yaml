@@ -137,32 +137,27 @@ stages:
         wsl bash -c "cp '$inventoryWSL' '$wslInventoryPath'"
 
         Write-Host "=== INVENTORY CONTENT ==="
-        Get-Content -Path $windowsInventory | ForEach-Object { Write-Host $_ }
+        Get-Content /root/ansible/inventory
         Write-Host "========================="
 
-        Write-Host "Installing Ansible Galaxy collections..."
-        wsl bash -c "[[ -f /root/ansible/requirements.yml ]] && ansible-galaxy collection install -r /root/ansible/requirements.yml || echo 'No requirements.yml file found, skipping...'"
-
-        Write-Host "Running ansible -m ping..."
-        $pingResult = wsl bash -c "ansible -i $wslInventoryPath all -m ping -u adminuser --private-key $wslKeyPath -vvv 2>&1"
-        $pingResult | ForEach-Object { Write-Host $_ }
-
-        if ($pingResult -match '"ping": "pong"') {
-          Write-Host "Ping OK"
+        Write-Host "Installing Ansible Galaxy collections if needed..."
+        if (Test-Path "./requirements.yml") {
+            wsl bash -c "ansible-galaxy install -r /mnt/c/path/to/requirements.yml"
         } else {
-          Write-Error "Ansible ping failed"
-          exit 1
+            Write-Host "No requirements.yml file found, skipping..."
         }
 
-        Write-Host "Running Ansible Playbook..."
-        $playbookPath = "$(System.DefaultWorkingDirectory)\deploy.yml"
-        $playbookPathWSL = "/mnt/c" + $playbookPath.Substring(2).Replace('\', '/')
+        Write-Host "Running ansible -m ping..."
+        $pingResult = wsl bash -c "ansible all -i /root/ansible/inventory -m ping -u adminuser --private-key /root/ansible/ansible_ssh_key"
+        Write-Host $pingResult
 
-        $cmd = "ansible-playbook -i /root/ansible/inventory $playbookPathWSL --private-key /root/ansible/ansible_ssh_key -u adminuser -vvv"
+        Write-Host "=== RUNNING PLAYBOOK ==="
+        $windowsPlaybookPath = "$(Build.SourcesDirectory)\deploy.yml"
+        $playbookPath = "/mnt/c" + $windowsPlaybookPath.Substring(2).Replace('\', '/')
 
-        Write-Host "Executing: $cmd"
-        $ansibleOutput = wsl bash -c "$cmd" 2>&1
-        $ansibleOutput | ForEach-Object { Write-Host $_ }
+        $cmd = "ansible-playbook -i /root/ansible/inventory $playbookPath --private-key /root/ansible/ansible_ssh_key -u adminuser"
+        $playbookResult = wsl bash -c "$cmd"
+        Write-Host $playbookResult
 
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Ansible playbook failed with exit code $LASTEXITCODE"
