@@ -1,3 +1,19 @@
+- name: Clone pause-clope-server repo
+  hosts: server
+  become: yes
+  vars:
+    repo_url: https://github.com/LaPauseClope/pause-clope-server.git
+    repo_branch: devops
+    repo_dest: /home/adminuser/app
+
+  tasks:
+    - name: Clone the Git repo
+      ansible.builtin.git:
+        repo: "{{ repo_url }}"
+        dest: "{{ repo_dest }}"
+        version: "{{ repo_branch }}"
+      become_user: adminuser
+
 - name: Install required Ansible collections
   hosts: localhost
   gather_facts: false
@@ -10,7 +26,7 @@
   hosts: server
   become: yes
   vars:
-    compose_dir: /home/adminuser
+    compose_dir: /home/adminuser/app
 
   tasks:
     - name: Ensure Python is installed (for Ansible)
@@ -53,46 +69,12 @@
         groups: docker
         append: yes
 
-    - name: Create .env file from template
+    - name: Create .env file from template (optional, only if needed)
       template:
         src: env.j2
         dest: "{{ compose_dir }}/.env"
       become_user: adminuser
-
-    - name: Copy docker-compose.yml
-      copy:
-        src: docker-compose.yml
-        dest: "{{ compose_dir }}/docker-compose.yml"
-      become_user: adminuser
-
-    - name: Copy Dockerfile
-      copy:
-        src: Dockerfile
-        dest: "{{ compose_dir }}/Dockerfile"
-        owner: adminuser
-        group: adminuser
-        mode: '0644'
-
-    - name: Debug file presence
-      debug:
-        msg: "Dockerfile exists: {{ dockerfile_check.stat.exists }}, Compose exists: {{ compose_check.stat.exists }}"
-      when: dockerfile_check.stat.exists is defined and compose_check.stat.exists is defined
-
-    - name: Check Dockerfile
-      stat:
-        path: "{{ compose_dir }}/Dockerfile"
-      register: dockerfile_check
-
-    - name: Check docker-compose.yml
-      stat:
-        path: "{{ compose_dir }}/docker-compose.yml"
-      register: compose_check
-
-    - name: Ensure adminuser can use Docker
-      user:
-        name: adminuser
-        groups: docker
-        append: yes
+      when: lookup('file', 'env.j2', errors='ignore') is not none
 
     - name: Start services with Docker Compose (community module)
       community.docker.docker_compose_v2:

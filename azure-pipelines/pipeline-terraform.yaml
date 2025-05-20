@@ -140,19 +140,15 @@ stages:
         wsl bash -c "cat /root/ansible/inventory"
         Write-Host "========================="
 
-        $reqPath = "$(System.DefaultWorkingDirectory)/requirements.yml"
-        $reqWSL = "/mnt/c" + $reqPath.Substring(2).Replace('\', '/')
-        wsl bash -c "ansible-galaxy install -r '$reqWSL'"
-
         Write-Host "Running ansible -m ping..."
-        $pingResult = wsl bash -c "ansible all -i /root/ansible/inventory -m ping -u adminuser --private-key /root/ansible/ansible_ssh_key"
+        $pingResult = wsl bash -c "ansible all -i /root/ansible/inventory -m ping -u adminuser --private-key $wslKeyPath"
         Write-Host $pingResult
 
         Write-Host "=== RUNNING PLAYBOOK ==="
         $windowsPlaybookPath = "$(Build.SourcesDirectory)\deploy.yml"
         $playbookPath = "/mnt/c" + $windowsPlaybookPath.Substring(2).Replace('\', '/')
 
-        $cmd = "ansible-playbook -i /root/ansible/inventory $playbookPath --private-key /root/ansible/ansible_ssh_key -u adminuser"
+        $cmd = "ansible-playbook -i $wslInventoryPath $playbookPath --private-key $wslKeyPath -u adminuser"
         $playbookResult = wsl bash -c "$cmd"
         Write-Host $playbookResult
 
@@ -160,6 +156,6 @@ stages:
             Write-Error "Ansible playbook failed with exit code $LASTEXITCODE"
             exit $LASTEXITCODE
         }
-      displayName: 'Prepare SSH Key, Install Galaxy Requirements, and Run Ansible'
+      displayName: 'Prepare SSH Key and Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
