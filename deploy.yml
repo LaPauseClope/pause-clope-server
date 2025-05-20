@@ -1,68 +1,85 @@
+- name: Install required Ansible collections
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Ensure community.docker is installed
+      ansible.builtin.command:
+        cmd: ansible-galaxy collection install community.docker --force
+
 - name: Configure Ubuntu server
   hosts: server
   become: yes
+  vars:
+    compose_dir: /home/adminuser
+
   tasks:
-    - name: Install Python (required for Ansible)
+    - name: Ensure Python is installed (for Ansible)
       raw: sudo apt-get update && sudo apt-get install -y python3
       changed_when: false
 
-    - name: Gather facts after installing Python
+    - name: Gather facts
       setup:
 
-    - name: Install Docker
+    - name: Ensure Docker is installed
       apt:
         name: docker.io
         state: present
+        update_cache: yes
 
-    - name: Install Docker Compose
+    - name: Ensure Docker is started and enabled
+      service:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Install Docker Compose plugin (v2)
       apt:
-        name: docker-compose
+        name: docker-compose-plugin
         state: present
-
-    - name: Create .env file
-      template:
-        src: env.j2
-        dest: /home/adminuser/.env
-      become: yes
-      become_user: adminuser
-
-    - name: Copy Docker Compose file
-      copy:
-        src: docker-compose.yml
-        dest: /home/adminuser/docker-compose.yml
-      become: yes
-      become_user: adminuser
-
-    - name: Copy Dockerfile
-      copy:
-        src: Dockerfile
-        dest: /home/adminuser/Dockerfile
-        owner: adminuser
-        group: adminuser
-        mode: '0644'
-
-    - name: Debug Dockerfile presence
-      stat:
-        path: /home/adminuser/Dockerfile
-      register: dockerfile_check
-
-    - name: Debug docker-compose presence
-      stat:
-        path: /home/adminuser/docker-compose.yml
-      register: compose_check
-
-    - debug:
-        msg: "Dockerfile exists: {{ dockerfile_check.stat.exists }}, Compose exists: {{ compose_check.stat.exists }}"
 
     - name: Add adminuser to docker group
       user:
         name: adminuser
         groups: docker
         append: yes
-      become: yes
 
-    - name: Start services with Docker Compose (as root)
-      shell: sudo docker-compose up -d
+    - name: Create .env file from template
+      template:
+        src: env.j2
+        dest: "{{ compose_dir }}/.env"
+      become_user: adminuser
+
+    - name: Copy docker-compose.yml
+      copy:
+        src: docker-compose.yml
+        dest: "{{ compose_dir }}/docker-compose.yml"
+      become_user: adminuser
+
+    - name: Copy Dockerfile
+      copy:
+        src: Dockerfile
+        dest: "{{ compose_dir }}/Dockerfile"
+        owner: adminuser
+        group: adminuser
+        mode: '0644'
+
+    - name: Debug file presence
+      debug:
+        msg: "Dockerfile exists: {{ dockerfile_check.stat.exists }}, Compose exists: {{ compose_check.stat.exists }}"
+      when: dockerfile_check.stat.exists is defined and compose_check.stat.exists is defined
+
+    - name: Check Dockerfile
+      stat:
+        path: "{{ compose_dir }}/Dockerfile"
+      register: dockerfile_check
+
+    - name: Check docker-compose.yml
+      stat:
+        path: "{{ compose_dir }}/docker-compose.yml"
+      register: compose_check
+
+    - name: Start services with Docker Compose plugin
+      shell: docker compose up -d
       args:
-        chdir: /home/adminuser
-      become: yes
+        chdir: "{{ compose_dir }}"
+      become_user: adminuser
