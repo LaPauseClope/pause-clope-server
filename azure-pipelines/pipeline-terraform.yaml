@@ -299,11 +299,15 @@ stages:
         }
         # Rafraîchir le PATH
         $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        # Installer pip si nécessaire
+        # Créer un environnement virtuel
+        python -m venv "$(System.DefaultWorkingDirectory)\ansible_venv"
+        # Activer l'environnement virtuel
+        . "$(System.DefaultWorkingDirectory)\ansible_venv\Scripts\Activate.ps1"
+        # Installer pip dans l'environnement virtuel
         python -m ensurepip --upgrade
         python -m pip install --upgrade pip
-        # Installer Ansible et pywinrm
-        pip install ansible
+        # Installer une version spécifique d'Ansible et pywinrm
+        pip install ansible==10.5.0
         pip install pywinrm
         # Vérifier les versions
         python --version
@@ -311,6 +315,7 @@ stages:
       displayName: 'Install Python, Ansible, and pywinrm'
 
     - powershell: |
+        . "$(System.DefaultWorkingDirectory)\ansible_venv\Scripts\Activate.ps1"
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
         icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /inheritance:r
         icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant "$env:USERNAME:(F)"
