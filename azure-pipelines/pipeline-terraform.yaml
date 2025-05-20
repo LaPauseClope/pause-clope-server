@@ -137,7 +137,7 @@ stages:
         wsl bash -c "cp '$inventoryWSL' '$wslInventoryPath'"
 
         Write-Host "=== INVENTORY CONTENT ==="
-        Get-Content /root/ansible/inventory
+        wsl bash -c "cat /root/ansible/inventory"
         Write-Host "========================="
 
         Write-Host "Installing Ansible Galaxy collections if needed..."
