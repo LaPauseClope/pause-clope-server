@@ -250,12 +250,22 @@ stages:
 
     - powershell: |
         terraform output -raw vm_public_ip > ip.txt
+        terraform output -raw ssh_private_key > ssh_private_key.txt
       workingDirectory: $(TF_ROOT)
-      displayName: 'Extract Terraform Output'
+      displayName: 'Extract Terraform Outputs'
+
+    - powershell: |
+        # Attendre que la VM soit prête
+        Start-Sleep -Seconds 120
+      displayName: 'Wait for VM to be ready'
 
     - publish: $(TF_ROOT)/ip.txt
       artifact: terraform-output
-      displayName: 'Publish Terraform Output'
+      displayName: 'Publish Terraform Output - IP'
+
+    - publish: $(TF_ROOT)/ssh_private_key.txt
+      artifact: terraform-ssh-key
+      displayName: 'Publish Terraform Output - SSH Key'
 
 - stage: ConfigureWithAnsible
   displayName: 'Configure with Ansible'
@@ -275,7 +285,11 @@ stages:
 
     - download: current
       artifact: terraform-output
-      displayName: 'Download Terraform Output'
+      displayName: 'Download Terraform Output - IP'
+
+    - download: current
+      artifact: terraform-ssh-key
+      displayName: 'Download Terraform Output - SSH Key'
 
     - powershell: |
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
@@ -294,7 +308,6 @@ stages:
           exit 1
         } else {
           Write-Host "Playbook found at $playbookPath"
-          # Valider la syntaxe YAML (approximation avec PowerShell)
           $playbookContent = Get-Content -Path $playbookPath -Raw
           Write-Host "Playbook content preview: $playbookContent.Substring(0, [Math]::Min(100, $playbookContent.Length))"
         }
@@ -329,8 +342,9 @@ stages:
         # Convertir le chemin Windows en chemin WSL correctement
         $workDir = "$(System.DefaultWorkingDirectory)" -replace '^[A-Za-z]:', '' -replace '\\', '/'
         $wslPath = "/mnt/c$workDir"
-        # Générer la clé SSH
-        echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
+        # Utiliser la clé privée générée par Terraform
+        $sshKeyPath = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
+        Get-Content -Path $sshKeyPath | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
         # Ajuster les permissions de la clé SSH dans WSL
         wsl bash -c "chmod 600 $wslPath/ansible_ssh_key"
         # Construire les chemins pour Ansible en évitant les doubles slash
@@ -343,9 +357,16 @@ stages:
         # Débogage des chemins
         Write-Host "Inventory Path: $inventoryPath"
         Write-Host "Playbook Path: $playbookPath"
-        # Exécuter Ansible via WSL
-        wsl bash -c "ansible-playbook -i $inventoryPath $playbookPath --private-key $wslPath/ansible_ssh_key -v"
+        # Tester la connexion SSH avant d'exécuter le playbook
+        $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
+        Write-Host "Testing SSH connectivity to $ip..."
+        wsl bash -c "ssh -i $wslPath/ansible_ssh_key -o StrictHostKeyChecking=no adminuser@$ip 'echo Connection successful'" 2>&1 | Write-Host
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "ERROR: SSH connection failed. Please verify the SSH key and VM configuration."
+          exit 1
+        }
+        # Exécuter Ansible avec plus de verbosité
+        wsl bash -c "ansible-playbook -i $inventoryPath $playbookPath --private-key $wslPath/ansible_ssh_key -vvv"
       displayName: 'Run Ansible Playbook'
       env:
-        SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
         ANSIBLE_HOST_KEY_CHECKING: False
