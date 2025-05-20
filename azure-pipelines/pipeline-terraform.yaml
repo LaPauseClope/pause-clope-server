@@ -133,7 +133,7 @@ stages:
         Write-Host "Application des permissions strictes sur la clé..."
         $identity = [System.Security.Principal.WindowsIdentity]::GetCurrent()
         $account = $identity.Name
-        icacls $keyPath /inheritance:r /grant:r "$account:F"
+        icacls $keyPath /inheritance:r /grant "$account:F"
 
         Write-Host "Clé SSH disponible à : $keyPath"
       workingDirectory: $(TF_ROOT)
