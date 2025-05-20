@@ -381,15 +381,17 @@ stages:
         Write-Host "Appliquer chmod 600 à $wslKeyPath"
         wsl bash -c "chmod 600 '$wslKeyPath'"
 
-        # === Test SSH + debug
+        # === Test SSH
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
         $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
         $sshOutput = wsl bash -c "$sshCmd" 2>&1
 
-        Write-Host "`n=== SSH DEBUG OUTPUT ==="
-        $sshOutput | ForEach-Object { Write-Host $_ }
-        Write-Host "=== END SSH DEBUG OUTPUT ===`n"
-
+        Write-Host ""
+        Write-Host "=== SSH DEBUG OUTPUT ==="
+        foreach ($line in $sshOutput) {
+            Write-Host $line
+        }
+        Write-Host "=== END SSH DEBUG OUTPUT ==="
 
         if ($LASTEXITCODE -ne 0) {
           Write-Error "SSH connection failed. Please verify the key or VM."
