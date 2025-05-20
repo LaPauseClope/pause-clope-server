@@ -8,8 +8,6 @@
 # - group: LaPauseClope
 # - name: TF_ROOT
 #   value: 'terraform'
-# - name: ANSIBLE_PIPELINE_ID
-#   value: '13'
 
 # stages:
 
