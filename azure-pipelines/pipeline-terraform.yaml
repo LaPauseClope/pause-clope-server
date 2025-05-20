@@ -363,34 +363,30 @@ stages:
       displayName: 'Générer inventory dynamique avec IP + clé privée WSL'
 
     - powershell: |
-        # Récupération IP + Clé privée
+        # === PARAMÈTRES ===
         $ip = Get-Content -Path "$(Pipeline.Workspace)\terraform-output\ip.txt"
-        $sshKeyPath = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
+        $sshKeySrc = "$(Pipeline.Workspace)\terraform-ssh-key\ssh_private_key.txt"
+        $sshKeyDest = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
 
-        # Copie la clé dans le workspace pour que WSL y accède
-        $destKeyPath = "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        # Sauvegarde de la clé privée avec droits restrictifs dès le départ
-        Set-Content -Path $destKeyPath -Value (Get-Content -Path $sshKeyPath -Raw) -Encoding ascii
-        # Appliquer les permissions en WSL
+        # === SAUVEGARDE DE LA CLÉ PRIVÉE AVEC BONNES PERMISSIONS ===
+        $privateKeyContent = Get-Content -Path $sshKeySrc -Raw
+        Set-Content -Path $sshKeyDest -Value $privateKeyContent -Encoding ascii
+
+        # === CONVERSION VERS CHEMIN WSL ===
+        $drive = $sshKeyDest.Substring(0,1).ToLower()
+        $pathWithoutDrive = $sshKeyDest.Substring(2).Replace('\', '/')
+        $wslKeyPath = "/mnt/$drive/$pathWithoutDrive"
+
+        # === CHMOD + TEST SSH ===
+        Write-Host "Appliquer chmod 600 à $wslKeyPath"
         wsl bash -c "chmod 600 '$wslKeyPath'"
 
-
-        # Convertir le chemin pour WSL (/mnt/c/...)
-        $driveLetter = $destKeyPath.Substring(0,1).ToLower()
-        $wslKeyPath = "/mnt/$driveLetter" + $destKeyPath.Substring(2).Replace('\','/')
-
-        # Appliquer les bons droits via WSL
-        wsl bash -c "chmod 600 '$wslKeyPath'"
-
-        # Test SSH
         Write-Host "Testing SSH connection to $ip using $wslKeyPath..."
         $sshCmd = "ssh -vvv -i '$wslKeyPath' -o StrictHostKeyChecking=no adminuser@$ip 'echo OK'"
         wsl bash -c "$sshCmd" 2>&1 | Tee-Object -Variable sshOutput
         Write-Host "`n=== SSH DEBUG OUTPUT ==="
         $sshOutput
         Write-Host "=== END SSH DEBUG OUTPUT ===`n"
-
-
 
         if ($LASTEXITCODE -ne 0) {
           Write-Error "SSH connection failed. Please verify the key or VM."
