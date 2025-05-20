@@ -290,40 +290,20 @@ stages:
       displayName: 'Update Ansible Inventory with Terraform Output'
 
     - powershell: |
-        # Vérifier si Python est installé, sinon l'installer
-        if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-          Write-Host "Installing Python..."
-          Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.6/python-3.11.6-amd64.exe -OutFile python-installer.exe
-          Start-Process -Wait -FilePath python-installer.exe -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1"
-          Remove-Item python-installer.exe
-        }
-        # Rafraîchir le PATH
-        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-        # Créer un environnement virtuel
-        python -m venv "$(System.DefaultWorkingDirectory)\ansible_venv"
-        # Activer l'environnement virtuel
-        . "$(System.DefaultWorkingDirectory)\ansible_venv\Scripts\Activate.ps1"
-        # Installer pip dans l'environnement virtuel
-        python -m ensurepip --upgrade
-        python -m pip install --upgrade pip
-        # Installer une version spécifique d'Ansible et pywinrm
-        pip install ansible==10.5.0
-        pip install pywinrm
-        # Vérifier les versions
-        python --version
-        ansible --version
-      displayName: 'Install Python, Ansible, and pywinrm'
+        # Installer WSL et Ansible si nécessaire
+        wsl --install -d Ubuntu-20.04 --set-default
+        wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
+        # Vérifier la version d'Ansible
+        wsl bash -c "ansible --version"
+      displayName: 'Install WSL and Ansible'
 
     - powershell: |
-        . "$(System.DefaultWorkingDirectory)\ansible_venv\Scripts\Activate.ps1"
+        # Générer la clé SSH
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /inheritance:r
-        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant "$env:USERNAME:(F)"
-        # Exécuter Ansible avec débogage
-        Write-Host "Running ansible-playbook with inventory: $(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory"
-        Write-Host "Playbook: $(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml"
-        Write-Host "Private key: $(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        ansible-playbook -i "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory" "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml" --private-key "$(System.DefaultWorkingDirectory)\ansible_ssh_key" -v
+        # Ajuster les permissions de la clé SSH
+        wsl bash -c "chmod 600 /mnt/c/Users/fabio/Documents/agent/_work/7/s/ansible_ssh_key"
+        # Exécuter Ansible via WSL
+        wsl bash -c "ansible-playbook -i /mnt/c/Users/fabio/Documents/agent/_work/7/s/$(ANSIBLE_ROOT)/inventory /mnt/c/Users/fabio/Documents/agent/_work/7/s/$(ANSIBLE_ROOT)/deploy.yml --private-key /mnt/c/Users/fabio/Documents/agent/_work/7/s/ansible_ssh_key -v"
       displayName: 'Run Ansible Playbook'
       env:
         SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
