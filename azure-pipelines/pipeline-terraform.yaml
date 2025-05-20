@@ -129,7 +129,7 @@ stages:
         wsl bash -c "cp /mnt/c/Users/fabio/ansible_ssh_key $wslKeyPath"
         wsl bash -c "chmod 600 $wslKeyPath"
 
-        $inventoryContent = "server ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=$wslKeyPath"
+        $inventoryContent = "[all]`nserver ansible_host=$ip ansible_user=adminuser ansible_ssh_private_key_file=$wslKeyPath ansible_python_interpreter=/usr/bin/python3"
         Set-Content -Path "$(System.DefaultWorkingDirectory)\ansible_inventory" -Value $inventoryContent -Encoding ascii
 
         $windowsInventory = "$(System.DefaultWorkingDirectory)\ansible_inventory"
