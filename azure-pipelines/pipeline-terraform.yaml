@@ -141,28 +141,32 @@ stages:
         Write-Host "========================="
 
         Write-Host "Installing Ansible Galaxy collections..."
-        $requirementsPath = "$(System.DefaultWorkingDirectory)\requirements.yml"
-        $requirementsWSL = "/mnt/c" + $requirementsPath.Substring(2).Replace('\', '/')
-        wsl bash -c "ansible-galaxy collection install -r '$requirementsWSL'"
+        wsl bash -c "ansible-galaxy collection install -r /root/ansible/requirements.yml || true"
 
         Write-Host "Running ansible -m ping..."
         $pingResult = wsl bash -c "ansible -i $wslInventoryPath all -m ping -u adminuser --private-key $wslKeyPath -vvv 2>&1"
         $pingResult | ForEach-Object { Write-Host $_ }
 
-        Write-Host "=== Ping result analysis ==="
         if ($pingResult -match '"ping": "pong"') {
-            Write-Host "Ansible ping succeeded"
+          Write-Host "Ping OK"
         } else {
-            Write-Host "Ansible ping failed — see logs above"
-            exit 1
+          Write-Error "Ansible ping failed"
+          exit 1
         }
 
         $playbookPath = "$(System.DefaultWorkingDirectory)\deploy.yml"
         $playbookWSL = "/mnt/c" + $playbookPath.Substring(2).Replace('\', '/')
 
         Write-Host "Running playbook..."
-        $ansibleOutput = wsl bash -c "ansible-playbook -i $wslInventoryPath $playbookWSL --private-key $wslKeyPath -u adminuser -vvv"
+        $ansibleOutput = wsl bash -c "ansible-playbook -i $wslInventoryPath $playbookWSL --private-key $wslKeyPath -u adminuser -vvv 2>&1"
         $ansibleOutput | ForEach-Object { Write-Host $_ }
+
+        if ($ansibleOutput -match "failed=0") {
+          Write-Host "Playbook OK"
+        } else {
+          Write-Error "Playbook failed"
+          exit 1
+        }
       displayName: 'Prepare SSH Key, Install Galaxy Requirements, and Run Ansible'
       env:
         ANSIBLE_HOST_KEY_CHECKING: False
