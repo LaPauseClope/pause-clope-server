@@ -290,17 +290,22 @@ stages:
       displayName: 'Update Ansible Inventory with Terraform Output'
 
     - powershell: |
-        # Installer WSL et Ansible si nécessaire
-        wsl --install -d Ubuntu-20.04 --set-default
-        wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
+        # Vérifier si Ansible est déjà installé dans WSL
+        $ansibleInstalled = wsl bash -c "command -v ansible" | Out-String
+        if ($ansibleInstalled -eq "") {
+          Write-Host "Ansible not found in WSL, installing..."
+          wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
+        } else {
+          Write-Host "Ansible already installed in WSL: $ansibleInstalled"
+        }
         # Vérifier la version d'Ansible
         wsl bash -c "ansible --version"
-      displayName: 'Install WSL and Ansible'
+      displayName: 'Check and Install Ansible in WSL'
 
     - powershell: |
         # Générer la clé SSH
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        # Ajuster les permissions de la clé SSH
+        # Ajuster les permissions de la clé SSH dans WSL
         wsl bash -c "chmod 600 /mnt/c/Users/fabio/Documents/agent/_work/7/s/ansible_ssh_key"
         # Exécuter Ansible via WSL
         wsl bash -c "ansible-playbook -i /mnt/c/Users/fabio/Documents/agent/_work/7/s/$(ANSIBLE_ROOT)/inventory /mnt/c/Users/fabio/Documents/agent/_work/7/s/$(ANSIBLE_ROOT)/deploy.yml --private-key /mnt/c/Users/fabio/Documents/agent/_work/7/s/ansible_ssh_key -v"
