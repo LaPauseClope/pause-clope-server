@@ -145,7 +145,7 @@ variables:
 - name: TF_ROOT
   value: 'terraform'
 - name: ANSIBLE_ROOT
-  value: ''  # Ajustez à 'ansible' si les fichiers Ansible sont dans un dossier ansible/
+  value: ''  # Ajustez à 'ansible' si deploy.yml est dans un dossier 'ansible'
 - name: ANSIBLE_PIPELINE_ID
   value: '13'
 
@@ -287,12 +287,24 @@ stages:
           (Get-Content -Path $inventoryPath) -replace "ansible_host=.*", "ansible_host=$ip" | Set-Content -Path $inventoryPath
           Write-Host "Inventory updated with IP: $ip"
         }
+        # Vérifier la présence et la validité de deploy.yml
+        $playbookPath = Join-Path -Path "$(System.DefaultWorkingDirectory)" -ChildPath "$(ANSIBLE_ROOT)\deploy.yml"
+        if (-not (Test-Path $playbookPath)) {
+          Write-Host "ERROR: Playbook file 'deploy.yml' not found at $playbookPath. Please ensure it exists in the repository."
+          exit 1
+        } else {
+          Write-Host "Playbook found at $playbookPath"
+          # Valider la syntaxe YAML (approximation avec PowerShell)
+          $playbookContent = Get-Content -Path $playbookPath -Raw
+          Write-Host "Playbook content preview: $playbookContent.Substring(0, [Math]::Min(100, $playbookContent.Length))"
+        }
       displayName: 'Update Ansible Inventory with Terraform Output'
 
     - powershell: |
-        # Vérifier si WSL est fonctionnel
-        Write-Host "Checking WSL status..."
+        # Vérifier si WSL est fonctionnel et démarrer la distribution
+        Write-Host "Checking WSL status and starting distribution..."
         wsl --list --verbose
+        wsl -d Ubuntu
         # Vérifier si openssh-client est installé (nécessaire pour Ansible)
         $sshInstalled = wsl bash -c "command -v ssh" | Out-String
         if ($sshInstalled -eq "") {
@@ -328,6 +340,9 @@ stages:
           $inventoryPath = "$wslPath/inventory"
           $playbookPath = "$wslPath/deploy.yml"
         }
+        # Débogage des chemins
+        Write-Host "Inventory Path: $inventoryPath"
+        Write-Host "Playbook Path: $playbookPath"
         # Exécuter Ansible via WSL
         wsl bash -c "ansible-playbook -i $inventoryPath $playbookPath --private-key $wslPath/ansible_ssh_key -v"
       displayName: 'Run Ansible Playbook'
