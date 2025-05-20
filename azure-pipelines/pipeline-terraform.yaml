@@ -140,12 +140,9 @@ stages:
         wsl bash -c "cat /root/ansible/inventory"
         Write-Host "========================="
 
-        Write-Host "Installing Ansible Galaxy collections if needed..."
-        if (Test-Path "./requirements.yml") {
-            wsl bash -c "ansible-galaxy install -r /mnt/c/path/to/requirements.yml"
-        } else {
-            Write-Host "No requirements.yml file found, skipping..."
-        }
+        $reqPath = "$(System.DefaultWorkingDirectory)/requirements.yml"
+        $reqWSL = "/mnt/c" + $reqPath.Substring(2).Replace('\', '/')
+        wsl bash -c "ansible-galaxy install -r '$reqWSL'"
 
         Write-Host "Running ansible -m ping..."
         $pingResult = wsl bash -c "ansible all -i /root/ansible/inventory -m ping -u adminuser --private-key /root/ansible/ansible_ssh_key"

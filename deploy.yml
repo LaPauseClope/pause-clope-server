@@ -85,6 +85,5 @@
         append: yes
 
     - name: Start services with Docker Compose (community module)
-      community.docker.docker_compose:
-        project_src: /home/adminuser
-      become: yes
+      community.docker.docker_compose_v2:
+        project_src: "{{ compose_dir }}"
