@@ -18,6 +18,13 @@
   hosts: server
   become: yes
   tasks:
+    - name: Make mvnw executable
+      ansible.builtin.file:
+        path: /home/adminuser/app/mvnw
+        mode: '0755'
+        owner: adminuser
+        group: adminuser
+
     - name: Build the JAR with Maven
       ansible.builtin.command: ./mvnw clean package -DskipTests
       args:
