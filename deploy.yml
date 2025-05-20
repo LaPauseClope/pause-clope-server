@@ -41,8 +41,20 @@
         group: adminuser
         mode: '0644'
 
+    - name: Debug Dockerfile presence
+      stat:
+        path: /home/adminuser/Dockerfile
+      register: dockerfile_check
+
+    - name: Debug docker-compose presence
+      stat:
+        path: /home/adminuser/docker-compose.yml
+      register: compose_check
+
+    - debug:
+        msg: "Dockerfile exists: {{ dockerfile_check.stat.exists }}, Compose exists: {{ compose_check.stat.exists }}"
+
     - name: Start services
-      command: docker-compose up -d
-      args:
-        chdir: /home/adminuser
+      shell: docker-compose -f /home/adminuser/docker-compose.yml up -d
       become: yes
+      become_user: adminuser
