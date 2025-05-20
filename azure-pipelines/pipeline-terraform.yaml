@@ -290,25 +290,29 @@ stages:
       displayName: 'Update Ansible Inventory with Terraform Output'
 
     - powershell: |
-        # Vérifier si Ansible est déjà installé dans WSL
-        $ansibleInstalled = wsl bash -c "command -v ansible" | Out-String
-        if ($ansibleInstalled -eq "") {
-          Write-Host "Ansible not found in WSL, installing..."
-          wsl bash -c "sudo apt-get update && sudo apt-get install -y ansible"
-        } else {
-          Write-Host "Ansible already installed in WSL: $ansibleInstalled"
+        # Vérifier si Python est installé, sinon l'installer
+        if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
+          Write-Host "Installing Python..."
+          Invoke-WebRequest -Uri https://www.python.org/ftp/python/3.11.6/python-3.11.6-amd64.exe -OutFile python-installer.exe
+          Start-Process -Wait -FilePath python-installer.exe -ArgumentList "/quiet InstallAllUsers=1 PrependPath=1"
+          Remove-Item python-installer.exe
         }
-        # Vérifier la version d'Ansible
-        wsl bash -c "ansible --version"
-      displayName: 'Check and Install Ansible in WSL'
+        # Rafraîchir le PATH pour inclure Python
+        $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
+        # Installer pip si nécessaire
+        python -m ensurepip --upgrade
+        python -m pip install --upgrade pip
+        # Installer Ansible
+        pip install ansible
+      displayName: 'Install Python and Ansible'
 
     - powershell: |
-        # Générer la clé SSH
         echo $env:SSH_PRIVATE_KEY | Out-File -FilePath "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
-        # Ajuster les permissions de la clé SSH dans WSL
-        wsl bash -c "chmod 600 /mnt/c/Users/fabio/Documents/agent/_work/7/s/ansible_ssh_key"
-        # Exécuter Ansible via WSL
-        wsl bash -c "ansible-playbook -i /mnt/c/Users/fabio/Documents/agent/_work/7/s/$(ANSIBLE_ROOT)/inventory /mnt/c/Users/fabio/Documents/agent/_work/7/s/$(ANSIBLE_ROOT)/deploy.yml --private-key /mnt/c/Users/fabio/Documents/agent/_work/7/s/ansible_ssh_key -v"
+        # Ajuster les permissions de la clé (Windows n'a pas chmod, mais on peut restreindre l'accès)
+        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /inheritance:r
+        icacls "$(System.DefaultWorkingDirectory)\ansible_ssh_key" /grant:r "$env:USERNAME:F"
+        # Exécuter Ansible
+        ansible-playbook -i "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\inventory" "$(System.DefaultWorkingDirectory)\$(ANSIBLE_ROOT)\deploy.yml" --private-key "$(System.DefaultWorkingDirectory)\ansible_ssh_key"
       displayName: 'Run Ansible Playbook'
       env:
         SSH_PRIVATE_KEY: $(SSH_PRIVATE_KEY)
