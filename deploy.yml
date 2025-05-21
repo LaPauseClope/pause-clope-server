@@ -38,7 +38,6 @@
         chdir: /home/adminuser/app
       environment:
         JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
-      become_user: adminuser
 
 - name: Install required Ansible collections
   hosts: localhost
