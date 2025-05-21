@@ -32,13 +32,6 @@
         owner: adminuser
         group: adminuser
 
-    - name: Set JAVA_HOME in .bashrc
-      ansible.builtin.lineinfile:
-        path: /home/adminuser/.bashrc
-        line: 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64'
-        create: yes
-      become_user: adminuser
-
     - name: Build the JAR with Maven
       ansible.builtin.shell: ./mvnw clean package -DskipTests
       args:
