@@ -40,11 +40,11 @@
       become_user: adminuser
 
     - name: Build the JAR with Maven
-      ansible.builtin.shell: |
-        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
-        ./mvnw clean package -DskipTests
+      ansible.builtin.shell: ./mvnw clean package -DskipTests
       args:
         chdir: /home/adminuser/app
+      environment:
+        JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
       become_user: adminuser
 
 - name: Install required Ansible collections
