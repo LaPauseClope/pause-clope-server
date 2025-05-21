@@ -25,8 +25,17 @@
         owner: adminuser
         group: adminuser
 
+    - name: Set JAVA_HOME in .bashrc
+      ansible.builtin.lineinfile:
+        path: /home/adminuser/.bashrc
+        line: 'export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64'
+        create: yes
+      become_user: adminuser
+
     - name: Build the JAR with Maven
-      ansible.builtin.command: ./mvnw clean package -DskipTests
+      ansible.builtin.shell: |
+        export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+        ./mvnw clean package -DskipTests
       args:
         chdir: /home/adminuser/app
       become_user: adminuser
@@ -46,13 +55,6 @@
     compose_dir: /home/adminuser/app
 
   tasks:
-    - name: Ensure Python is installed (for Ansible)
-      raw: sudo apt-get update && sudo apt-get install -y python3
-      changed_when: false
-
-    - name: Gather facts
-      setup:
-
     - name: Ensure Docker is installed
       apt:
         name: docker.io
@@ -86,12 +88,12 @@
         groups: docker
         append: yes
 
-    - name: Create .env file from template (optional, only if needed)
+    - name: Create .env file from template
       template:
         src: env.j2
         dest: "{{ compose_dir }}/.env"
       become_user: adminuser
-      when: lookup('file', 'env.j2', errors='ignore') is not none
+      ignore_errors: yes
 
     - name: Start services with Docker Compose (community module)
       community.docker.docker_compose_v2:
