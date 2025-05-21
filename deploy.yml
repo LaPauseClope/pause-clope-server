@@ -7,11 +7,18 @@
     repo_dest: /home/adminuser/app
 
   tasks:
+    - name: Remove existing directory if it exists
+      ansible.builtin.file:
+        path: "{{ repo_dest }}"
+        state: absent
+      become_user: adminuser
+
     - name: Clone the Git repo
       ansible.builtin.git:
         repo: "{{ repo_url }}"
         dest: "{{ repo_dest }}"
         version: "{{ repo_branch }}"
+        force: yes
       become_user: adminuser
 
 - name: Build app with Maven
