@@ -24,7 +24,22 @@
 - name: Build app with Maven
   hosts: server
   become: yes
+  vars:
+    java_home_path: /usr/lib/jvm/java-17-openjdk-amd64  # Ajustez selon le chemin exact trouvé
   tasks:
+    - name: Install OpenJDK 17
+      ansible.builtin.apt:
+        name: openjdk-17-jdk
+        state: present
+        update_cache: yes
+
+    - name: Verify JAVA_HOME
+      ansible.builtin.stat:
+        path: "{{ java_home_path }}"
+      register: java_home_check
+      failed_when: not java_home_check.stat.exists
+      changed_when: false
+
     - name: Make mvnw executable
       ansible.builtin.file:
         path: /home/adminuser/app/mvnw
@@ -37,7 +52,7 @@
       args:
         chdir: /home/adminuser/app
       environment:
-        JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
+        JAVA_HOME: "{{ java_home_path }}"
 
 - name: Install required Ansible collections
   hosts: localhost
