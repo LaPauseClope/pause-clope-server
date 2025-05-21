@@ -7,11 +7,29 @@
     repo_dest: /home/adminuser/app
 
   tasks:
+    - name: Ensure directory exists with correct permissions
+      ansible.builtin.file:
+        path: "{{ repo_dest }}"
+        state: directory
+        owner: adminuser
+        group: adminuser
+        mode: '0755'
+        recurse: yes
+      ignore_errors: yes  # Continue même si des fichiers sont problématiques
+
     - name: Remove existing directory if it exists
       ansible.builtin.file:
         path: "{{ repo_dest }}"
         state: absent
-      become_user: adminuser
+      # Utilise root (via become: yes) pour éviter les problèmes de permissions
+
+    - name: Recreate directory with correct permissions
+      ansible.builtin.file:
+        path: "{{ repo_dest }}"
+        state: directory
+        owner: adminuser
+        group: adminuser
+        mode: '0755'
 
     - name: Clone the Git repo
       ansible.builtin.git:
@@ -24,16 +42,19 @@
 - name: Build app with Maven
   hosts: server
   become: yes
-  vars:
-    java_home_path: /usr/lib/jvm/java-21-openjdk-amd64
   tasks:
-    - name: Install OpenJDK 21
+    - name: Install OpenJDK 17
       ansible.builtin.apt:
-        name: openjdk-21-jdk
+        name: openjdk-17-jdk
         state: present
         update_cache: yes
 
-    - name: Verify JAVA_HOME
+    - name: Set JAVA_HOME environment variable
+      ansible.builtin.set_fact:
+        java_home_path: "{{ '/usr/lib/jvm/java-17-openjdk-amd64' if ansible_architecture == 'x86_64' else '/usr/lib/jvm/java-17-openjdk-arm64' }}"
+      when: ansible_architecture is defined
+
+    - name: Verify JAVA_HOME exists
       ansible.builtin.stat:
         path: "{{ java_home_path }}"
       register: java_home_check
