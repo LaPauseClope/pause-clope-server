@@ -43,15 +43,15 @@
   hosts: server
   become: yes
   tasks:
-    - name: Install OpenJDK 17
+    - name: Install OpenJDK 21
       ansible.builtin.apt:
-        name: openjdk-17-jdk
+        name: openjdk-21-jdk
         state: present
         update_cache: yes
 
     - name: Set JAVA_HOME environment variable
       ansible.builtin.set_fact:
-        java_home_path: "{{ '/usr/lib/jvm/java-17-openjdk-amd64' if ansible_architecture == 'x86_64' else '/usr/lib/jvm/java-17-openjdk-arm64' }}"
+        java_home_path: "{{ '/usr/lib/jvm/java-21-openjdk-amd64' if ansible_architecture == 'x86_64' else '/usr/lib/jvm/java-17-openjdk-arm64' }}"
       when: ansible_architecture is defined
 
     - name: Verify JAVA_HOME exists
