@@ -92,3 +92,34 @@ resource "azurerm_subnet_network_security_group_association" "lapauseclope" {
   subnet_id                 = azurerm_subnet.lapauseclope.id
   network_security_group_id = azurerm_network_security_group.lapauseclope.id
 }
+
+resource "azurerm_recovery_services_vault" "lapauseclope" {
+  name                = "recovery-vault"
+  location            = var.location
+  resource_group_name = data.azurerm_resource_group.lapauseclope.name
+  sku                 = "Standard"
+}
+
+resource "azurerm_backup_policy_vm" "lapauseclope" {
+  name                = "vm-backup-policy"
+  resource_group_name = data.azurerm_resource_group.lapauseclope.name
+  recovery_vault_name = azurerm_recovery_services_vault.lapauseclope.name
+
+  backup {
+    frequency = "Daily"
+    time      = "23:00"
+  }
+
+  retention_daily {
+    count = 7
+  }
+
+  instant_restore_retention_days = 2
+}
+
+resource "azurerm_backup_protected_vm" "lapauseclope" {
+  resource_group_name = data.azurerm_resource_group.lapauseclope.name
+  recovery_vault_name = azurerm_recovery_services_vault.lapauseclope.name
+  source_vm_id        = azurerm_linux_virtual_machine.lapauseclope.id
+  backup_policy_id    = azurerm_backup_policy_vm.lapauseclope.id
+}
