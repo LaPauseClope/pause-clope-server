@@ -15,7 +15,7 @@ variables:
 - name: RESOURCE_GROUP_NAME
   value: '$(ARM_RESOURCE_GROUP_NAME)'
 - name: RECOVERY_VAULT_NAME
-  value: 'recovery-vault'
+  value: 'PauseClopeVault'
 
 stages:
 - stage: TerraformPlan
