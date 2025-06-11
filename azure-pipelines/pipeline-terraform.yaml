@@ -72,6 +72,9 @@ stages:
       workingDirectory: $(TF_ROOT)
       displayName: 'Terraform Init (Apply)'
     - powershell: |
+        Write-Host "Resource Group: $(RESOURCE_GROUP_NAME)"
+        Write-Host "Vault Name: $(RECOVERY_VAULT_NAME)"
+        Write-Host "VM Name: $(VM_NAME)"
         az login --service-principal -u $(ARM_AZURE_CLIENT_ID) -p $(ARM_AZURE_CLIENT_SECRET) --tenant $(ARM_AZURE_TENANT_ID)
         az backup protection backup-now `
           --resource-group $(RESOURCE_GROUP_NAME) `
@@ -80,7 +83,7 @@ stages:
           --container-name $(VM_NAME) `
           --backup-management-type AzureIaasVM `
           --backup-type Full `
-          --retain-until $(Get-Date -Format "dd-MM-yyyy")
+          --retain-until $(Get-Date).AddDays(1).ToString("dd-MM-yyyy")
       displayName: 'Create VM Backup'
       env:
         ARM_AZURE_CLIENT_ID: $(ARM_AZURE_CLIENT_ID)
