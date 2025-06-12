@@ -130,7 +130,7 @@
       ignore_errors: yes
 
     - name: Vérifier si le conteneur app-app-1 existe et tourne déjà
-      shell: docker ps --filter "name=app-app-1" --filter "status=running" --format "{{.Names}}"
+      shell: docker ps --filter "name=app-app-1" --filter "status=running" --format '{{"{{"}}.Names{{"}}"}}'
       register: app_container_status
       changed_when: false
       ignore_errors: true
@@ -139,4 +139,4 @@
       shell: docker compose up -d --no-recreate
       args:
         chdir: "{{ compose_dir }}"
-      when: app_container_status.stdout == ""
+      when: app_container_status.stdout is defined and app_container_status.stdout == ""
