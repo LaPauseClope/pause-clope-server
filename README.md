@@ -2,7 +2,7 @@
 
 [![Spring Test](https://github.com/LaPauseClope/pause-clope-server/actions/workflows/maven.yml/badge.svg)](https://github.com/LaPauseClope/pause-clope-server/actions/workflows/maven.yml)
 [![Latest Release](https://img.shields.io/github/v/release/LaPauseClope/pause-clope-server)](https://github.com/LaPauseClope/pause-clope-server/releases)
-
+[![PDF](https://img.shields.io/badge/presentation-pdf-red)](./Presentation-du-projet-Pause-Clope.pdf)
 Link to main [documentation](https://www.youtube.com/watch?v=dQw4w9WgXcQ).
 A simple Spring Boot application that simulates a Cookie Clicker game, with PostgreSQL integration.
 
