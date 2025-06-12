@@ -15,13 +15,12 @@
         group: adminuser
         mode: '0755'
         recurse: yes
-      ignore_errors: yes  # Continue même si des fichiers sont problématiques
+      ignore_errors: yes
 
     - name: Remove existing directory if it exists
       ansible.builtin.file:
         path: "{{ repo_dest }}"
         state: absent
-      # Utilise root (via become: yes) pour éviter les problèmes de permissions
 
     - name: Recreate directory with correct permissions
       ansible.builtin.file:
@@ -130,6 +129,14 @@
       become_user: adminuser
       ignore_errors: yes
 
-    - name: Start services with Docker Compose (community module)
-      community.docker.docker_compose_v2:
-        project_src: "{{ compose_dir }}"
+    - name: Vérifier si le conteneur app-app-1 existe et tourne déjà
+      shell: docker ps --filter "name=app-app-1" --filter "status=running" --format "{{.Names}}"
+      register: app_container_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Lancer docker-compose uniquement si app-app-1 n’est pas actif
+      shell: docker compose up -d --no-recreate
+      args:
+        chdir: "{{ compose_dir }}"
+      when: app_container_status.stdout == ""
