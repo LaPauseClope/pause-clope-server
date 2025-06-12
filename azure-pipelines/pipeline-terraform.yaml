@@ -1,6 +1,5 @@
 trigger:
-- devops
-
+- main
 pool:
   name: SelfHosted
 
